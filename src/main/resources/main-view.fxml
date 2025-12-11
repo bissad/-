@@ -7,15 +7,16 @@
 
 <VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.backup.MainController"
-      spacing="15" alignment="CENTER_LEFT"
-      style="-fx-background-color: #f5f5f5;"
-      prefWidth="800" prefHeight="600">
+      spacing="20" alignment="CENTER_LEFT"
+      style="-fx-background-color: linear-gradient(to bottom, #f8f9fa, #e9ecef);"
+      prefWidth="850" prefHeight="700">
     
     <padding>
-        <Insets top="20" right="20" bottom="20" left="20"/>
+        <Insets top="30" right="30" bottom="30" left="30"/>
     </padding>
     
-    <Label text="文件备份软件" style="-fx-font-size: 24px; -fx-font-weight: bold;"
+    <Label text="文件备份软件" 
+           style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"
            alignment="CENTER" textAlignment="CENTER"
            maxWidth="Infinity">
         <VBox.margin>
@@ -23,38 +24,57 @@
         </VBox.margin>
     </Label>
     
-    <Separator maxWidth="Infinity">
+    <Label text="安全可靠的数据备份工具" 
+           style="-fx-font-size: 14px; -fx-text-fill: #7f8c8d;"
+           alignment="CENTER" textAlignment="CENTER"
+           maxWidth="Infinity">
         <VBox.margin>
-            <Insets bottom="10"/>
+            <Insets bottom="20"/>
+        </VBox.margin>
+    </Label>
+    
+    <Separator maxWidth="Infinity" style="-fx-background-color: #bdc3c7;">
+        <VBox.margin>
+            <Insets bottom="20"/>
         </VBox.margin>
     </Separator>
     
-    <VBox spacing="10">
-        <Label text="源目录（要备份的文件夹）" style="-fx-font-weight: bold;"/>
-        <HBox spacing="10">
-            <TextField fx:id="sourceField" promptText="选择要备份的源目录..." HBox.hgrow="ALWAYS"/>
-            <Button fx:id="sourceButton" text="浏览..." onAction="#handleSelectSource"
-                    style="-fx-min-width: 80px;"/>
+    <VBox spacing="12">
+        <Label text="📁 源路径（要备份的文件或文件夹）" 
+               style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
+        <ListView fx:id="sourceListView" prefHeight="150" 
+                  style="-fx-background-color: white; -fx-background-radius: 8; -fx-border-color: #ddd; -fx-border-radius: 8;"/>
+        <HBox spacing="12">
+            <Button fx:id="addFolderButton" text="📁 添加文件夹" onAction="#handleAddFolder"
+                    style="-fx-min-width: 130px; -fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
+            <Button fx:id="addFileButton" text="📄 添加文件" onAction="#handleAddFile"
+                    style="-fx-min-width: 130px; -fx-background-color: #9b59b6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
+            <Button fx:id="removeSourceButton" text="➖ 删除选中" onAction="#handleRemoveSource"
+                    style="-fx-min-width: 130px; -fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
         </HBox>
     </VBox>
     
-    <VBox spacing="10">
-        <Label text="目标目录（备份到哪里）" style="-fx-font-weight: bold;"/>
-        <HBox spacing="10">
-            <TextField fx:id="targetField" promptText="选择备份目标目录..." HBox.hgrow="ALWAYS"/>
-            <Button fx:id="targetButton" text="浏览..." onAction="#handleSelectTarget"
-                    style="-fx-min-width: 80px;"/>
+    <VBox spacing="12">
+        <Label text="🎯 目标目录（备份到哪里）" 
+               style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
+        <HBox spacing="12">
+            <TextField fx:id="targetField" promptText="选择备份目标目录..." HBox.hgrow="ALWAYS"
+                       style="-fx-background-radius: 6; -fx-border-color: #ddd; -fx-border-radius: 6; -fx-padding: 10; -fx-font-size: 14px;"/>
+            <Button fx:id="targetButton" text="📂 浏览" onAction="#handleSelectTarget"
+                    style="-fx-min-width: 100px; -fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
         </HBox>
     </VBox>
     
-    <Separator maxWidth="Infinity">
+    <Separator maxWidth="Infinity" style="-fx-background-color: #bdc3c7;">
         <VBox.margin>
             <Insets top="10" bottom="10"/>
         </VBox.margin>
     </Separator>
     
-    <Button fx:id="backupButton" text="开始备份" onAction="#handleBackup"
-            style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-min-width: 150px; -fx-min-height: 40px;"
+    <Button fx:id="backupButton" text="🚀 开始备份" onAction="#handleBackup"
+            style="-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: white; 
+                   -fx-background-color: linear-gradient(to right, #27ae60, #2ecc71); 
+                   -fx-min-height: 50px; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(46, 204, 113, 0.5), 10, 0, 0, 3);"
             alignment="CENTER"
             maxWidth="Infinity">
         <VBox.margin>
@@ -62,25 +82,35 @@
         </VBox.margin>
     </Button>
     
-    <ProgressBar fx:id="progressBar" maxWidth="Infinity" visible="false">
+    <ProgressBar fx:id="progressBar" maxWidth="Infinity" visible="false"
+                 style="-fx-accent: #3498db;">
         <VBox.margin>
             <Insets top="10" bottom="10"/>
         </VBox.margin>
     </ProgressBar>
     
-    <Label fx:id="statusLabel" text="" style="-fx-font-style: italic;" alignment="CENTER" maxWidth="Infinity">
+    <Label fx:id="statusLabel" text="" 
+           style="-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;" 
+           alignment="CENTER" maxWidth="Infinity">
         <VBox.margin>
             <Insets top="5" bottom="5"/>
         </VBox.margin>
     </Label>
     
-    <VBox fx:id="resultBox" spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 5;"
+    <VBox fx:id="resultBox" spacing="15" 
+          style="-fx-background-color: white; -fx-padding: 20; -fx-background-radius: 10; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 10, 0, 0, 5);"
           visible="false" maxWidth="Infinity">
-        <Label text="备份结果" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
-        <Separator maxWidth="Infinity"/>
-        <Label fx:id="filesCopiedLabel" text="文件复制: 0"/>
-        <Label fx:id="directoriesCreatedLabel" text="目录创建: 0"/>
-        <Label fx:id="totalSizeLabel" text="总大小: 0 B"/>
+        <Label text="📊 备份结果" 
+               style="-fx-font-weight: bold; -fx-font-size: 18px; -fx-text-fill: #2c3e50;"/>
+        <Separator maxWidth="Infinity" style="-fx-background-color: #ecf0f1;"/>
+        <VBox spacing="10">
+            <Label fx:id="filesCopiedLabel" text="文件复制: 0" 
+                   style="-fx-font-size: 14px; -fx-text-fill: #34495e;"/>
+            <Label fx:id="directoriesCreatedLabel" text="目录创建: 0" 
+                   style="-fx-font-size: 14px; -fx-text-fill: #34495e;"/>
+            <Label fx:id="totalSizeLabel" text="总大小: 0 B" 
+                   style="-fx-font-size: 14px; -fx-text-fill: #34495e;"/>
+        </VBox>
     </VBox>
     
 </VBox>

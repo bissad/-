@@ -1,10 +1,18 @@
 package com.backup;
 
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ListView;
+import javafx.scene.control.ProgressBar;
+import javafx.scene.control.TextField;
 import javafx.scene.layout.VBox;
 import javafx.stage.DirectoryChooser;
+import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import java.io.File;
@@ -13,10 +21,12 @@ import java.io.IOException;
 public class MainController {
     
     @FXML
-    private TextField sourceField;
+    private ListView<String> sourceListView;
     
     @FXML
     private TextField targetField;
+    
+    private ObservableList<String> sourcePaths;
     
     @FXML
     private Button sourceButton;
@@ -50,17 +60,49 @@ public class MainController {
     @FXML
     public void initialize() {
         backupService = new BackupService();
+        sourcePaths = FXCollections.observableArrayList();
+        sourceListView.setItems(sourcePaths);
         resultBox.setVisible(false);
         progressBar.setVisible(false);
     }
     
     @FXML
-    private void handleSelectSource() {
+    private void handleAddFolder() {
         DirectoryChooser chooser = new DirectoryChooser();
-        chooser.setTitle("选择要备份的源目录");
+        chooser.setTitle("选择要备份的源文件夹");
         File selected = chooser.showDialog(getStage());
         if (selected != null) {
-            sourceField.setText(selected.getAbsolutePath());
+            String path = selected.getAbsolutePath();
+            String displayText = "[文件夹] " + path;
+            if (!sourcePaths.contains(displayText)) {
+                sourcePaths.add(displayText);
+            } else {
+                showAlert("提示", "该路径已存在");
+            }
+        }
+    }
+    
+    @FXML
+    private void handleAddFile() {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("选择要备份的文件");
+        File selected = chooser.showOpenDialog(getStage());
+        if (selected != null) {
+            String path = selected.getAbsolutePath();
+            String displayText = "[文件] " + path;
+            if (!sourcePaths.contains(displayText)) {
+                sourcePaths.add(displayText);
+            } else {
+                showAlert("提示", "该路径已存在");
+            }
+        }
+    }
+    
+    @FXML
+    private void handleRemoveSource() {
+        String selected = sourceListView.getSelectionModel().getSelectedItem();
+        if (selected != null) {
+            sourcePaths.remove(selected);
         }
     }
     
@@ -76,23 +118,29 @@ public class MainController {
     
     @FXML
     private void handleBackup() {
-        String source = sourceField.getText();
         String target = targetField.getText();
         
-        if (source.isEmpty() || target.isEmpty()) {
-            showAlert("错误", "请选择源目录和目标目录");
+        if (sourcePaths.isEmpty()) {
+            showAlert("错误", "请至少添加一个要备份的路径");
             return;
         }
         
-        if (source.equals(target)) {
-            showAlert("错误", "源目录和目标目录不能相同");
+        if (target.isEmpty()) {
+            showAlert("错误", "请选择目标目录");
             return;
         }
         
-        performBackup(source, target);
+        for (String source : sourcePaths) {
+            if (source.equals(target)) {
+                showAlert("错误", "源路径和目标目录不能相同: " + source);
+                return;
+            }
+        }
+        
+        performBackup(target);
     }
     
-    private void performBackup(String source, String target) {
+    private void performBackup(String target) {
         backupButton.setDisable(true);
         progressBar.setVisible(true);
         resultBox.setVisible(false);
@@ -101,7 +149,12 @@ public class MainController {
         Task<BackupService.BackupResult> backupTask = new Task<>() {
             @Override
             protected BackupService.BackupResult call() throws Exception {
-                return backupService.backupDirectory(source, target);
+                java.util.List<String> actualPaths = new java.util.ArrayList<>();
+                for (String displayPath : sourcePaths) {
+                    String actualPath = displayPath.substring(displayPath.indexOf("] ") + 2);
+                    actualPaths.add(actualPath);
+                }
+                return backupService.backupMultiple(actualPaths, target);
             }
         };
         
@@ -142,6 +195,6 @@ public class MainController {
     }
     
     private Stage getStage() {
-        return (Stage) sourceField.getScene().getWindow();
+        return (Stage) sourceListView.getScene().getWindow();
     }
 }
