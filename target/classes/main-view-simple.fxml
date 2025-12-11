@@ -43,10 +43,7 @@
         <tabs>
             <Tab text="备份">
                 <content>
-                    <VBox spacing="15" maxWidth="Infinity">
-                        <padding>
-                            <Insets top="20" right="20" bottom="20" left="20"/>
-                        </padding>
+                    <VBox spacing="15" padding="20" maxWidth="Infinity">
                         <VBox spacing="12" maxWidth="Infinity">
                             <Label text="源路径（要备份的文件或文件夹）" 
                                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
@@ -62,7 +59,7 @@
                             </HBox>
                         </VBox>
                         
-                        <VBox spacing="12">
+                        <VBox spacing="12" maxWidth="Infinity">
                             <Label text="目标目录（备份到哪里）" 
                                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
                             <HBox spacing="12">
@@ -110,24 +107,23 @@
             
             <Tab text="还原">
                 <content>
-                    <VBox spacing="15" maxWidth="Infinity">
-                        <padding>
-                            <Insets top="20" right="20" bottom="20" left="20"/>
-                        </padding>
+                    <VBox spacing="15" padding="20" maxWidth="Infinity">
                         <VBox spacing="12" maxWidth="Infinity">
-                            <Label text="请勾选要还原的备份文件/文件夹（自动加载备份记录）" 
+                            <Label text="备份源路径（要还原的文件或文件夹）" 
                                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
-                            <ListView fx:id="restoreSourceListView" prefHeight="200" maxWidth="Infinity"
+                            <ListView fx:id="restoreSourceListView" prefHeight="150" maxWidth="Infinity"
                                       style="-fx-background-color: white; -fx-background-radius: 8; -fx-border-color: #ddd; -fx-border-radius: 8; -fx-border-width: 1;"/>
-                            <HBox spacing="12" alignment="CENTER_LEFT">
-                                <Button fx:id="selectAllRestoreButton" text="全选" onAction="#handleSelectAllRestore"
-                                        style="-fx-min-width: 100px; -fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
-                                <Button fx:id="removeRestoreSelectedButton" text="删除选中" onAction="#handleRemoveRestoreSelected"
-                                        style="-fx-min-width: 100px; -fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
+                            <HBox spacing="12">
+                                <Button fx:id="addRestoreFolderButton" text="添加文件夹" onAction="#handleAddRestoreFolder"
+                                        style="-fx-min-width: 130px; -fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
+                                <Button fx:id="addRestoreFileButton" text="添加文件" onAction="#handleAddRestoreFile"
+                                        style="-fx-min-width: 130px; -fx-background-color: #9b59b6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
+                                <Button fx:id="removeRestoreSourceButton" text="删除选中" onAction="#handleRemoveRestoreSource"
+                                        style="-fx-min-width: 130px; -fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
                             </HBox>
                         </VBox>
                         
-                        <VBox spacing="12">
+                        <VBox spacing="12" maxWidth="Infinity">
                             <Label text="还原目标目录（还原到哪里）" 
                                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
                             <HBox spacing="12">
