@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.text.*?>
+
+<VBox xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="com.backup.MainController"
+      spacing="15" alignment="CENTER_LEFT"
+      style="-fx-background-color: #f5f5f5;"
+      prefWidth="800" prefHeight="600">
+    
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+    
+    <Label text="文件备份软件" style="-fx-font-size: 24px; -fx-font-weight: bold;"
+           alignment="CENTER" textAlignment="CENTER"
+           maxWidth="Infinity">
+        <VBox.margin>
+            <Insets bottom="10"/>
+        </VBox.margin>
+    </Label>
+    
+    <Separator maxWidth="Infinity">
+        <VBox.margin>
+            <Insets bottom="10"/>
+        </VBox.margin>
+    </Separator>
+    
+    <VBox spacing="10">
+        <Label text="源目录（要备份的文件夹）" style="-fx-font-weight: bold;"/>
+        <HBox spacing="10">
+            <TextField fx:id="sourceField" promptText="选择要备份的源目录..." HBox.hgrow="ALWAYS"/>
+            <Button fx:id="sourceButton" text="浏览..." onAction="#handleSelectSource"
+                    style="-fx-min-width: 80px;"/>
+        </HBox>
+    </VBox>
+    
+    <VBox spacing="10">
+        <Label text="目标目录（备份到哪里）" style="-fx-font-weight: bold;"/>
+        <HBox spacing="10">
+            <TextField fx:id="targetField" promptText="选择备份目标目录..." HBox.hgrow="ALWAYS"/>
+            <Button fx:id="targetButton" text="浏览..." onAction="#handleSelectTarget"
+                    style="-fx-min-width: 80px;"/>
+        </HBox>
+    </VBox>
+    
+    <Separator maxWidth="Infinity">
+        <VBox.margin>
+            <Insets top="10" bottom="10"/>
+        </VBox.margin>
+    </Separator>
+    
+    <Button fx:id="backupButton" text="开始备份" onAction="#handleBackup"
+            style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-min-width: 150px; -fx-min-height: 40px;"
+            alignment="CENTER"
+            maxWidth="Infinity">
+        <VBox.margin>
+            <Insets top="10" bottom="10"/>
+        </VBox.margin>
+    </Button>
+    
+    <ProgressBar fx:id="progressBar" maxWidth="Infinity" visible="false">
+        <VBox.margin>
+            <Insets top="10" bottom="10"/>
+        </VBox.margin>
+    </ProgressBar>
+    
+    <Label fx:id="statusLabel" text="" style="-fx-font-style: italic;" alignment="CENTER" maxWidth="Infinity">
+        <VBox.margin>
+            <Insets top="5" bottom="5"/>
+        </VBox.margin>
+    </Label>
+    
+    <VBox fx:id="resultBox" spacing="10" style="-fx-background-color: white; -fx-padding: 15; -fx-background-radius: 5;"
+          visible="false" maxWidth="Infinity">
+        <Label text="备份结果" style="-fx-font-weight: bold; -fx-font-size: 16px;"/>
+        <Separator maxWidth="Infinity"/>
+        <Label fx:id="filesCopiedLabel" text="文件复制: 0"/>
+        <Label fx:id="directoriesCreatedLabel" text="目录创建: 0"/>
+        <Label fx:id="totalSizeLabel" text="总大小: 0 B"/>
+    </VBox>
+    
+</VBox>
