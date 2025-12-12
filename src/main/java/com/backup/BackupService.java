@@ -19,18 +19,29 @@ public class BackupService {
         private final int directoriesCreated;
         private final long totalSize;
         private final String message;
+        private final List<String> successfulPaths;
         
         public BackupResult(int filesCopied, int directoriesCreated, long totalSize, String message) {
             this.filesCopied = filesCopied;
             this.directoriesCreated = directoriesCreated;
             this.totalSize = totalSize;
             this.message = message;
+            this.successfulPaths = new ArrayList<>();
+        }
+        
+        public BackupResult(int filesCopied, int directoriesCreated, long totalSize, String message, List<String> successfulPaths) {
+            this.filesCopied = filesCopied;
+            this.directoriesCreated = directoriesCreated;
+            this.totalSize = totalSize;
+            this.message = message;
+            this.successfulPaths = successfulPaths;
         }
         
         public int getFilesCopied() { return filesCopied; }
         public int getDirectoriesCreated() { return directoriesCreated; }
         public long getTotalSize() { return totalSize; }
         public String getMessage() { return message; }
+        public List<String> getSuccessfulPaths() { return successfulPaths; }
     }
     
     public BackupResult backup(String sourcePathStr, String targetDir) throws IOException {
@@ -53,6 +64,7 @@ public class BackupService {
         int totalDirectoriesCreated = 0;
         long totalSize = 0;
         List<String> messages = new ArrayList<>();
+        List<String> successfulPaths = new ArrayList<>();
         
         for (String sourcePath : sourcePaths) {
             BackupResult result = backup(sourcePath, targetDir);
@@ -63,13 +75,14 @@ public class BackupService {
             // 如果备份成功，保存历史记录
             if (result.getMessage().equals("备份完成") || result.getMessage().equals("文件备份完成")) {
                 saveBackupHistory(sourcePath, targetDir);
+                successfulPaths.add(sourcePath);
             } else {
                 messages.add(sourcePath + ": " + result.getMessage());
             }
         }
         
         String message = messages.isEmpty() ? "备份完成" : String.join("; ", messages);
-        return new BackupResult(totalFilesCopied, totalDirectoriesCreated, totalSize, message);
+        return new BackupResult(totalFilesCopied, totalDirectoriesCreated, totalSize, message, successfulPaths);
     }
     
     private BackupResult backupDirectoryWithRoot(Path sourcePath, Path targetPath) throws IOException {
@@ -283,5 +296,120 @@ public class BackupService {
         
         // 去重
         return sources.stream().distinct().collect(java.util.stream.Collectors.toList());
+    }
+    
+    // 还原项管理相关方法
+    public static class RestoreItem {
+        private final String path;
+        private final String addedTime;
+        private boolean deleted;
+        
+        public RestoreItem(String path) {
+            this.path = path;
+            this.addedTime = LocalDateTime.now().format(DATE_FORMATTER);
+            this.deleted = false;
+        }
+        
+        public RestoreItem(String path, String addedTime, boolean deleted) {
+            this.path = path;
+            this.addedTime = addedTime;
+            this.deleted = deleted;
+        }
+        
+        public String getPath() { return path; }
+        public String getAddedTime() { return addedTime; }
+        public boolean isDeleted() { return deleted; }
+        public void setDeleted(boolean deleted) { this.deleted = deleted; }
+        
+        @Override
+        public String toString() {
+            return path + "|" + addedTime + "|" + deleted;
+        }
+        
+        public static RestoreItem fromString(String line) {
+            String[] parts = line.split("\\|", 3);
+            if (parts.length == 3) {
+                boolean deleted = Boolean.parseBoolean(parts[2]);
+                return new RestoreItem(parts[0], parts[1], deleted);
+            }
+            return null;
+        }
+    }
+    
+    private static final String RESTORE_ITEMS_FILE = "restore_items.txt";
+    
+    public void addRestoreItem(String path) throws IOException {
+        List<RestoreItem> items = loadRestoreItems();
+        
+        // 检查是否已存在相同的路径
+        for (RestoreItem item : items) {
+            if (item.getPath().equals(path)) {
+                // 如果已存在但被标记为删除，则恢复它
+                if (item.isDeleted()) {
+                    item.setDeleted(false);
+                    saveRestoreItems(items);
+                }
+                return;
+            }
+        }
+        
+        // 添加新项
+        items.add(new RestoreItem(path));
+        saveRestoreItems(items);
+    }
+    
+    public void removeRestoreItem(String path) throws IOException {
+        List<RestoreItem> items = loadRestoreItems();
+        
+        for (RestoreItem item : items) {
+            if (item.getPath().equals(path)) {
+                item.setDeleted(true);
+                saveRestoreItems(items);
+                return;
+            }
+        }
+    }
+    
+    public List<RestoreItem> loadRestoreItems() throws IOException {
+        List<RestoreItem> items = new ArrayList<>();
+        Path itemsPath = Paths.get(RESTORE_ITEMS_FILE);
+        
+        if (Files.exists(itemsPath)) {
+            List<String> lines = Files.readAllLines(itemsPath);
+            for (String line : lines) {
+                RestoreItem item = RestoreItem.fromString(line);
+                if (item != null) {
+                    items.add(item);
+                }
+            }
+        }
+        
+        return items;
+    }
+    
+    private void saveRestoreItems(List<RestoreItem> items) throws IOException {
+        List<String> lines = new ArrayList<>();
+        for (RestoreItem item : items) {
+            lines.add(item.toString());
+        }
+        
+        Path itemsPath = Paths.get(RESTORE_ITEMS_FILE);
+        Files.write(itemsPath, lines, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+    }
+    
+    public List<String> getAvailableRestoreItems() throws IOException {
+        List<RestoreItem> items = loadRestoreItems();
+        List<String> availablePaths = new ArrayList<>();
+        
+        for (RestoreItem item : items) {
+            if (!item.isDeleted()) {
+                java.io.File file = new java.io.File(item.getPath());
+                if (file.exists()) {
+                    availablePaths.add(item.getPath());
+                }
+            }
+        }
+        
+        return availablePaths;
     }
 }

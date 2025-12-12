@@ -17,6 +17,9 @@ import javafx.stage.Stage;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -71,6 +74,9 @@ public class MainController {
     @FXML
     private Button removeRestoreSelectedButton;
     
+    @FXML
+    private Button refreshRestoreButton;
+    
     private ObservableList<BackupItem> restoreBackupItems;
     
     @FXML
@@ -110,11 +116,12 @@ public class MainController {
         restoreResultBox.setVisible(false);
         restoreProgressBar.setVisible(false);
         
-        // 设置复选框单元格工厂 - 使用自定义ListCell实现
+        // 修复复选框功能，避免监听器重复添加
         restoreSourceListView.setCellFactory(listView -> new javafx.scene.control.ListCell<BackupItem>() {
             private final javafx.scene.control.CheckBox checkBox = new javafx.scene.control.CheckBox();
             private BackupItem currentItem = null;
-            private javafx.beans.value.ChangeListener<Boolean> itemSelectionListener = null;
+            private javafx.beans.value.ChangeListener<Boolean> checkboxListener = null;
+            private javafx.beans.value.ChangeListener<Boolean> itemListener = null;
             
             {
                 setContentDisplay(javafx.scene.control.ContentDisplay.LEFT);
@@ -127,13 +134,16 @@ public class MainController {
                 super.updateItem(item, empty);
                 
                 // 移除旧item的监听器
-                if (currentItem != null && itemSelectionListener != null) {
-                    currentItem.selectedProperty().removeListener(itemSelectionListener);
-                    itemSelectionListener = null;
+                if (currentItem != null && itemListener != null) {
+                    currentItem.selectedProperty().removeListener(itemListener);
+                    itemListener = null;
                 }
                 
                 // 移除复选框的旧监听器
-                checkBox.selectedProperty().removeListener(this::handleCheckBoxChange);
+                if (checkboxListener != null) {
+                    checkBox.selectedProperty().removeListener(checkboxListener);
+                    checkboxListener = null;
+                }
                 
                 currentItem = item;
                 
@@ -141,58 +151,75 @@ public class MainController {
                     setText(null);
                     checkBox.setText(null);
                     checkBox.setSelected(false);
-                    setGraphic(null); // 清空图形
+                    setGraphic(null);
                 } else {
                     setText(item.getPath());
-                    checkBox.setText(null); // 不在复选框内显示文本，文本显示在单元格中
+                    checkBox.setText(null);
                     
-                    // 检查文件是否存在，如果不存在则不显示复选框
+                    // 检查文件是否存在
                     java.io.File file = new java.io.File(item.getPath());
                     if (file.exists()) {
                         setGraphic(checkBox);
-                        // 同步初始状态
+                        // 同步复选框状态
                         checkBox.setSelected(item.isSelected());
                         
-                        // 监听复选框状态变化 -> 更新item
-                        checkBox.selectedProperty().addListener(this::handleCheckBoxChange);
+                        // 监听复选框变化 -> 更新item
+                        checkboxListener = (obs, oldVal, newVal) -> {
+                            if (item.isSelected() != newVal) {
+                                item.setSelected(newVal);
+                            }
+                        };
+                        checkBox.selectedProperty().addListener(checkboxListener);
                         
                         // 监听item状态变化 -> 更新复选框
-                        itemSelectionListener = (obs, oldVal, newVal) -> {
+                        itemListener = (obs, oldVal, newVal) -> {
                             if (checkBox.isSelected() != newVal) {
                                 checkBox.setSelected(newVal);
                             }
                         };
-                        item.selectedProperty().addListener(itemSelectionListener);
+                        item.selectedProperty().addListener(itemListener);
                     } else {
-                        // 文件不存在，不显示复选框
                         setGraphic(null);
-                        item.setSelected(false); // 确保未选中
+                        item.setSelected(false);
                     }
-                }
-            }
-            
-            private void handleCheckBoxChange(javafx.beans.value.ObservableValue<? extends Boolean> obs, Boolean oldVal, Boolean newVal) {
-                if (currentItem != null && currentItem.isSelected() != newVal) {
-                    currentItem.setSelected(newVal);
                 }
             }
         });
         
-        // 加载备份文件列表
-        try {
-            List<String> backupSources = backupService.getAvailableBackupSources();
-            for (String path : backupSources) {
-                File file = new File(path);
-                if (file.exists()) {
-                    restoreBackupItems.add(new BackupItem(path));
+        // 在后台线程中加载还原项列表，避免阻塞UI初始化
+        javafx.concurrent.Task<Void> loadRestoreTask = new javafx.concurrent.Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                try {
+                    List<String> restoreItems = backupService.getAvailableRestoreItems();
+                    javafx.application.Platform.runLater(() -> {
+                        try {
+                            for (String path : restoreItems) {
+                                restoreBackupItems.add(new BackupItem(path));
+                            }
+                            if (restoreBackupItems.isEmpty()) {
+                                restoreStatusLabel.setText("没有备份记录，请先进行备份操作");
+                            } else {
+                                restoreStatusLabel.setText("已加载 " + restoreBackupItems.size() + " 个备份记录");
+                            }
+                        } catch (Exception e) {
+                            System.err.println("UI更新错误: " + e.getMessage());
+                            restoreStatusLabel.setText("加载备份记录完成");
+                        }
+                    });
+                } catch (Exception e) {
+                    System.err.println("加载还原项错误: " + e.getMessage());
+                    javafx.application.Platform.runLater(() -> {
+                        restoreStatusLabel.setText("加载备份记录完成");
+                    });
                 }
+                return null;
             }
-            if (restoreBackupItems.isEmpty()) {
-                restoreStatusLabel.setText("没有备份记录，请先进行备份操作");
-            }
-        } catch (IOException e) {
-            restoreStatusLabel.setText("加载备份记录失败: " + e.getMessage());
-        }
+        };
+        
+        Thread loadThread = new Thread(loadRestoreTask);
+        loadThread.setDaemon(true);
+        loadThread.start();
     }
     
     @FXML
@@ -206,7 +233,8 @@ public class MainController {
             if (!sourcePaths.contains(displayText)) {
                 sourcePaths.add(displayText);
             } else {
-                showAlert("提示", "该路径已存在");
+                // 使用状态标签显示提示
+                showTempStatusMessage(statusLabel, "该路径已存在", "#e74c3c");
             }
         }
     }
@@ -222,7 +250,24 @@ public class MainController {
             if (!sourcePaths.contains(displayText)) {
                 sourcePaths.add(displayText);
             } else {
-                showAlert("提示", "该路径已存在");
+                // 使用状态标签显示提示
+                statusLabel.setText("该路径已存在");
+                statusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #e74c3c;");
+                
+                // 3秒后清除提示
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(3000);
+                        javafx.application.Platform.runLater(() -> {
+                            if (statusLabel.getText().equals("该路径已存在")) {
+                                statusLabel.setText("");
+                                statusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;");
+                            }
+                        });
+                    } catch (InterruptedException e) {
+                        // 忽略中断
+                    }
+                }).start();
             }
         }
     }
@@ -250,18 +295,69 @@ public class MainController {
         String target = targetField.getText();
         
         if (sourcePaths.isEmpty()) {
-            showAlert("错误", "请至少添加一个要备份的路径");
+            // 使用状态标签显示提示
+            statusLabel.setText("请至少添加一个要备份的路径");
+            statusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #e74c3c;");
+            
+            // 3秒后清除提示
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000);
+                    javafx.application.Platform.runLater(() -> {
+                        if (statusLabel.getText().equals("请至少添加一个要备份的路径")) {
+                            statusLabel.setText("");
+                            statusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;");
+                        }
+                    });
+                } catch (InterruptedException e) {
+                    // 忽略中断
+                }
+            }).start();
             return;
         }
         
         if (target.isEmpty()) {
-            showAlert("错误", "请选择目标目录");
+            // 使用状态标签显示提示
+            statusLabel.setText("请选择目标目录");
+            statusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #e74c3c;");
+            
+            // 3秒后清除提示
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000);
+                    javafx.application.Platform.runLater(() -> {
+                        if (statusLabel.getText().equals("请选择目标目录")) {
+                            statusLabel.setText("");
+                            statusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;");
+                        }
+                    });
+                } catch (InterruptedException e) {
+                    // 忽略中断
+                }
+            }).start();
             return;
         }
         
         for (String source : sourcePaths) {
             if (source.equals(target)) {
-                showAlert("错误", "源路径和目标目录不能相同: " + source);
+                // 使用状态标签显示提示
+                statusLabel.setText("源路径和目标目录不能相同: " + source);
+                statusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #e74c3c;");
+                
+                // 3秒后清除提示
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(3000);
+                        javafx.application.Platform.runLater(() -> {
+                            if (statusLabel.getText().equals("源路径和目标目录不能相同: " + source)) {
+                                statusLabel.setText("");
+                                statusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;");
+                            }
+                        });
+                    } catch (InterruptedException e) {
+                        // 忽略中断
+                    }
+                }).start();
                 return;
             }
         }
@@ -275,14 +371,16 @@ public class MainController {
         resultBox.setVisible(false);
         statusLabel.setText("正在备份...");
         
+        // 保存实际路径，以便在备份成功后添加还原项
+        final ArrayList<String> actualPaths = new ArrayList<>();
+        for (String displayPath : sourcePaths) {
+            String actualPath = displayPath.substring(displayPath.indexOf("] ") + 2);
+            actualPaths.add(actualPath);
+        }
+        
         Task<BackupService.BackupResult> backupTask = new Task<>() {
             @Override
             protected BackupService.BackupResult call() throws Exception {
-                ArrayList<String> actualPaths = new ArrayList<>();
-                for (String displayPath : sourcePaths) {
-                    String actualPath = displayPath.substring(displayPath.indexOf("] ") + 2);
-                    actualPaths.add(actualPath);
-                }
                 return backupService.backupMultiple(actualPaths, target);
             }
         };
@@ -300,6 +398,27 @@ public class MainController {
             // 备份成功后清空备份列表，方便进行新一轮备份
             sourcePaths.clear();
             
+            // 备份成功后添加还原项到持久化存储
+            try {
+                // 获取成功备份的路径列表
+                List<String> successfulPaths = result.getSuccessfulPaths();
+                
+                // 为每个成功备份的路径添加还原项
+                for (String sourcePath : successfulPaths) {
+                    Path sourcePathObj = Paths.get(sourcePath);
+                    Path targetPathObj = Paths.get(target);
+                    
+                    // 计算备份文件的路径
+                    Path backupPath = targetPathObj.resolve(sourcePathObj.getFileName());
+                    if (Files.exists(backupPath)) {
+                        backupService.addRestoreItem(backupPath.toString());
+                    }
+                }
+            } catch (Exception e) {
+                // 添加还原项失败，但不影响备份操作
+                System.err.println("添加还原项失败: " + e.getMessage());
+            }
+            
             // 备份成功后刷新还原列表
             refreshRestoreList();
         });
@@ -311,7 +430,9 @@ public class MainController {
             backupButton.setDisable(false);
         });
         
-        new Thread(backupTask).start();
+        Thread backupThread = new Thread(backupTask);
+        backupThread.setDaemon(true);
+        backupThread.start();
     }
     
     
@@ -345,6 +466,11 @@ public class MainController {
     }
     
     @FXML
+    private void handleRefreshRestoreList() {
+        refreshRestoreList();
+    }
+    
+    @FXML
     private void handleRemoveRestoreSelected() {
         // 创建要删除的项目列表
         List<BackupItem> itemsToRemove = new ArrayList<>();
@@ -355,12 +481,58 @@ public class MainController {
         }
         
         if (itemsToRemove.isEmpty()) {
-            showAlert("提示", "请先勾选要删除的备份项");
+            // 使用状态标签显示提示，而不是弹出对话框
+            restoreStatusLabel.setText("请先勾选要删除的备份项");
+            restoreStatusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #e74c3c;");
+            
+            // 3秒后清除提示
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000);
+                    javafx.application.Platform.runLater(() -> {
+                        if (restoreStatusLabel.getText().equals("请先勾选要删除的备份项")) {
+                            restoreStatusLabel.setText("");
+                            restoreStatusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;");
+                        }
+                    });
+                } catch (InterruptedException e) {
+                    // 忽略中断
+                }
+            }).start();
             return;
         }
         
-        // 删除选中的项目
-        restoreBackupItems.removeAll(itemsToRemove);
+        // 从持久化存储中删除选中的项目
+        try {
+            for (BackupItem item : itemsToRemove) {
+                backupService.removeRestoreItem(item.getPath());
+            }
+            
+            // 从UI列表中删除选中的项目
+            restoreBackupItems.removeAll(itemsToRemove);
+            restoreStatusLabel.setText("已删除选中的备份项");
+            restoreStatusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #27ae60;");
+            
+        } catch (IOException e) {
+            restoreStatusLabel.setText("删除备份项失败: " + e.getMessage());
+            restoreStatusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #e74c3c;");
+        }
+        
+        // 3秒后清除提示
+        new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                javafx.application.Platform.runLater(() -> {
+                    if (restoreStatusLabel.getText().equals("已删除选中的备份项") || 
+                        restoreStatusLabel.getText().startsWith("删除备份项失败")) {
+                        restoreStatusLabel.setText("");
+                        restoreStatusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;");
+                    }
+                });
+            } catch (InterruptedException e) {
+                // 忽略中断
+            }
+        }).start();
     }
     
     @FXML
@@ -376,12 +548,46 @@ public class MainController {
             }
         }
         if (!hasSelected) {
-            showAlert("错误", "请至少勾选一个要还原的备份文件/文件夹");
+            // 使用状态标签显示提示
+            restoreStatusLabel.setText("请至少勾选一个要还原的备份文件/文件夹");
+            restoreStatusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #e74c3c;");
+            
+            // 3秒后清除提示
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000);
+                    javafx.application.Platform.runLater(() -> {
+                        if (restoreStatusLabel.getText().equals("请至少勾选一个要还原的备份文件/文件夹")) {
+                            restoreStatusLabel.setText("");
+                            restoreStatusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;");
+                        }
+                    });
+                } catch (InterruptedException e) {
+                    // 忽略中断
+                }
+            }).start();
             return;
         }
         
         if (target.isEmpty()) {
-            showAlert("错误", "请选择还原目标目录");
+            // 使用状态标签显示提示
+            restoreStatusLabel.setText("请选择还原目标目录");
+            restoreStatusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #e74c3c;");
+            
+            // 3秒后清除提示
+            new Thread(() -> {
+                try {
+                    Thread.sleep(3000);
+                    javafx.application.Platform.runLater(() -> {
+                        if (restoreStatusLabel.getText().equals("请选择还原目标目录")) {
+                            restoreStatusLabel.setText("");
+                            restoreStatusLabel.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;");
+                        }
+                    });
+                } catch (InterruptedException e) {
+                    // 忽略中断
+                }
+            }).start();
             return;
         }
         
@@ -425,7 +631,9 @@ public class MainController {
             restoreButton.setDisable(false);
         });
         
-        new Thread(restoreTask).start();
+        Thread restoreThread = new Thread(restoreTask);
+        restoreThread.setDaemon(true);
+        restoreThread.start();
     }
     
     private String formatSize(long bytes) {
@@ -445,7 +653,7 @@ public class MainController {
     
     private void refreshRestoreList() {
         try {
-            List<String> backupSources = backupService.getAvailableBackupSources();
+            List<String> restoreItems = backupService.getAvailableRestoreItems();
             Set<String> existingPaths = new HashSet<>();
             
             // 收集现有路径
@@ -453,14 +661,15 @@ public class MainController {
                 existingPaths.add(item.getPath());
             }
             
-            // 添加新的备份源
-            for (String path : backupSources) {
+            // 添加新的还原项
+            for (String path : restoreItems) {
                 if (!existingPaths.contains(path)) {
                     restoreBackupItems.add(new BackupItem(path));
                 }
             }
             
-            // 检查并删除不存在的文件
+            // 检查并删除不存在的文件（这些文件在getAvailableRestoreItems中已经被过滤掉了）
+            // 所以这里只需要处理UI列表中可能存在的无效项
             List<BackupItem> itemsToRemove = new ArrayList<>();
             for (BackupItem item : restoreBackupItems) {
                 File file = new File(item.getPath());
@@ -505,5 +714,29 @@ public class MainController {
         public String toString() {
             return path;
         }
+    }
+    
+    private void showTempStatusMessage(Label label, String message, String color) {
+        javafx.application.Platform.runLater(() -> {
+            label.setText(message);
+            label.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: " + color + ";");
+        });
+        
+        // 创建守护线程来清除提示
+        Thread clearThread = new Thread(() -> {
+            try {
+                Thread.sleep(3000);
+                javafx.application.Platform.runLater(() -> {
+                    if (label.getText().equals(message)) {
+                        label.setText("");
+                        label.setStyle("-fx-font-size: 14px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;");
+                    }
+                });
+            } catch (InterruptedException e) {
+                // 忽略中断
+            }
+        });
+        clearThread.setDaemon(true);
+        clearThread.start();
     }
 }

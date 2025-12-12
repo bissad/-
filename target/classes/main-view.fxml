@@ -124,6 +124,8 @@
                                         style="-fx-min-width: 100px; -fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
                                 <Button fx:id="removeRestoreSelectedButton" text="删除选中" onAction="#handleRemoveRestoreSelected"
                                         style="-fx-min-width: 100px; -fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
+                                <Button fx:id="refreshRestoreButton" text="刷新列表" onAction="#handleRefreshRestoreList"
+                                        style="-fx-min-width: 100px; -fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
                             </HBox>
                         </VBox>
                         

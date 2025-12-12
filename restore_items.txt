@@ -1,0 +1,4 @@
+/Users/a123/Desktop/咸鱼经历分享.docx|2025-12-12 16:25:44|true
+/Users/a123/Desktop/被相同手法到手刀的受害者1.jpg|2025-12-12 16:28:25|false
+/test/path/file1.txt|2025-12-12 16:36:48|true
+/test/path/file2.txt|2025-12-12 16:36:48|false
