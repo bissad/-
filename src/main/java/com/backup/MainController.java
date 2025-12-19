@@ -6,6 +6,7 @@ import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.CheckBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.ListView;
 import javafx.scene.control.ProgressBar;
@@ -45,6 +46,12 @@ public class MainController {
     private Button backupButton;
     
     @FXML
+    private CheckBox includeSpecialFilesCheck;
+    
+    @FXML
+    private CheckBox preserveMetadataCheck;
+    
+    @FXML
     private ProgressBar progressBar;
     
     @FXML
@@ -81,6 +88,9 @@ public class MainController {
     
     @FXML
     private Button restoreButton;
+    
+    @FXML
+    private CheckBox restorePreserveMetadataCheck;
     
     @FXML
     private ProgressBar restoreProgressBar;
@@ -378,10 +388,16 @@ public class MainController {
             actualPaths.add(actualPath);
         }
         
+        // 创建备份选项
+        final BackupService.BackupOptions options = new BackupService.BackupOptions(
+            includeSpecialFilesCheck.isSelected(),
+            preserveMetadataCheck.isSelected()
+        );
+        
         Task<BackupService.BackupResult> backupTask = new Task<>() {
             @Override
             protected BackupService.BackupResult call() throws Exception {
-                return backupService.backupMultiple(actualPaths, target);
+                return backupService.backupMultiple(actualPaths, target, options);
             }
         };
         
@@ -600,6 +616,12 @@ public class MainController {
         restoreResultBox.setVisible(false);
         restoreStatusLabel.setText("正在还原...");
         
+        // 创建还原选项
+        final BackupService.BackupOptions options = new BackupService.BackupOptions(
+            true,  // 还原时总是包含特殊文件记录
+            restorePreserveMetadataCheck.isSelected()
+        );
+        
         Task<BackupService.BackupResult> restoreTask = new Task<>() {
             @Override
             protected BackupService.BackupResult call() throws Exception {
@@ -609,7 +631,7 @@ public class MainController {
                         actualPaths.add(item.getPath());
                     }
                 }
-                return backupService.restoreMultiple(actualPaths, target);
+                return backupService.restoreMultiple(actualPaths, target, options);
             }
         };
         

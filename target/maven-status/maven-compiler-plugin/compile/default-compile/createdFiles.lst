@@ -1,7 +1,11 @@
 com/backup/MainController$2.class
+com/backup/BackupService$BackupOptions.class
+com/backup/BackupService$FileKind.class
 com/backup/MainController$BackupItem.class
 com/backup/BackupService$BackupHistoryRecord.class
+com/backup/BackupService$SpecialFileRecord.class
 com/backup/MainController$1.class
+com/backup/BackupService$2.class
 com/backup/BackupService.class
 com/backup/BackupService$1.class
 com/backup/MainController.class

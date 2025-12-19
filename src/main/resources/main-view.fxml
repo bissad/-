@@ -73,6 +73,19 @@
                             </HBox>
                         </VBox>
                         
+                        <VBox spacing="12">
+                            <Label text="备份选项" 
+                                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
+                            <HBox spacing="20">
+                                <CheckBox fx:id="includeSpecialFilesCheck" text="包含特殊文件" selected="true"
+                                          style="-fx-font-size: 14px; -fx-text-fill: #34495e;"/>
+                                <CheckBox fx:id="preserveMetadataCheck" text="保留元数据" selected="true"
+                                          style="-fx-font-size: 14px; -fx-text-fill: #34495e;"/>
+                            </HBox>
+                            <Label text="特殊文件包括：符号链接、命名管道、设备文件等" 
+                                   style="-fx-font-size: 12px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;"/>
+                        </VBox>
+                        
                         <Separator maxWidth="Infinity" style="-fx-background-color: #bdc3c7;"/>
                         
                         <Button fx:id="backupButton" text="开始备份" onAction="#handleBackup"
@@ -138,6 +151,17 @@
                                 <Button fx:id="restoreTargetButton" text="浏览" onAction="#handleSelectRestoreTarget"
                                         style="-fx-min-width: 100px; -fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6;"/>
                             </HBox>
+                        </VBox>
+                        
+                        <VBox spacing="12">
+                            <Label text="还原选项" 
+                                   style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
+                            <HBox spacing="20">
+                                <CheckBox fx:id="restorePreserveMetadataCheck" text="保留元数据" selected="true"
+                                          style="-fx-font-size: 14px; -fx-text-fill: #34495e;"/>
+                            </HBox>
+                            <Label text="注意：特殊文件将以记录文件形式恢复" 
+                                   style="-fx-font-size: 12px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;"/>
                         </VBox>
                         
                         <Separator maxWidth="Infinity" style="-fx-background-color: #bdc3c7;"/>
