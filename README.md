@@ -1,14 +1,18 @@
-# 文件备份软件
+# 文件备份软件 - 增强版
 
-基于JavaFX的桌面备份工具，支持文件夹增量备份。
+基于JavaFX的桌面备份工具，支持文件夹备份、打包、压缩和加密功能。
 
 ## 功能特性
 
-- 图形化界面，操作简单
-- 选择源目录和目标目录
-- 增量备份（只复制新增或修改的文件）
-- 实时显示备份进度和结果
-- 跨平台支持（Windows、macOS、Linux）
+- **图形化界面**：直观易用的操作界面
+- **多种备份模式**：
+  - 目录备份：传统文件夹备份
+  - 包文件备份：生成.fbk文件，便于传输和存储
+- **压缩功能**：支持哈夫曼编码、游程编码(RLE)、ZLIB压缩
+- **加密功能**：支持XOR、RC4、AES-256加密算法
+- **智能备份**：增量备份，只处理新增或修改的文件
+- **实时进度**：显示备份/还原进度和结果
+- **跨平台**：支持Windows、macOS、Linux
 
 ## 运行要求
 
@@ -30,30 +34,42 @@ mvn clean package
 java -jar target/backup-software-1.0-SNAPSHOT.jar
 ```
 
-### 方式3：开发模式运行
-
-```bash
-mvn clean compile exec:java -Dexec.mainClass="com.backup.BackupApplication"
-```
-
 ## 使用方法
 
+### 备份功能
 1. 启动应用程序
-2. 点击"浏览..."选择要备份的源目录
-3. 点击"浏览..."选择备份目标目录
-4. 点击"开始备份"按钮
-5. 等待备份完成，查看备份结果
+2. 点击"添加文件夹"或"添加文件"选择要备份的源
+3. 点击"浏览"选择备份目标目录
+4. 勾选"打包模式"启用.fbk文件生成
+5. 选择压缩和加密选项
+6. 点击"开始备份"按钮
+
+### 还原功能
+1. 切换到"还原"标签页
+2. 选择还原模式（目录还原或包文件还原）
+3. 选择要还原的备份文件/文件夹或.fbk包文件
+4. 选择还原目标目录
+5. 点击"开始还原"按钮
 
 ## 项目结构
 
 ```
 src/main/java/com/backup/
-├── BackupApplication.java  # 应用程序入口
-├── MainController.java     # UI控制器
-└── BackupService.java      # 备份核心逻辑
+├── BackupApplication.java          # 基础应用程序入口
+├── EnhancedBackupApplication.java  # 增强版应用程序入口
+├── MainController.java             # 基础UI控制器
+├── MainControllerFixed.java        # 修复版UI控制器
+├── EnhancedMainController.java     # 增强版UI控制器
+├── BackupService.java              # 基础备份服务
+├── EnhancedBackupService.java      # 增强备份服务
+├── BackupPackage.java              # 打包/解包核心逻辑
+├── TestExtract.java                # 测试类
+└── TestPackage.java                # 测试类
 
 src/main/resources/
-└── main-view.fxml          # UI布局文件
+├── main-view.fxml                   # 基础UI布局
+├── main-view-enhanced.fxml          # 增强版UI布局
+└── main-view-simple.fxml            # 简化版UI布局
 ```
 
 ## 技术栈
@@ -61,3 +77,27 @@ src/main/resources/
 - Java 17
 - JavaFX 21
 - Maven
+- Gson (JSON处理)
+
+## 核心功能
+
+### 打包功能
+- 将整个文件夹结构打包为单一.fbk文件
+- 保留文件元数据（创建时间、修改时间、访问时间）
+- 支持特殊文件处理
+
+### 压缩功能
+- **哈夫曼编码**：适用于文本文件
+- **游程编码(RLE)**：适用于有重复数据的文件
+- **ZLIB压缩**：通用压缩算法
+
+### 加密功能
+- **XOR加密**：快速加密，适合日常使用
+- **RC4加密**：流加密算法
+- **AES-256加密**：高级加密标准，银行级安全
+
+## 安全特性
+
+- 密码验证机制：确保密码正确性
+- 文件完整性校验：使用SHA-256哈希验证
+- 多层加密：支持压缩后加密的组合安全
