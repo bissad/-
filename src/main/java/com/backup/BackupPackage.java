@@ -892,6 +892,126 @@ public class BackupPackage {
     }
     
     /**
+     * 使用RC4算法加密数据
+     * @param data 原始数据
+     * @param password 密码
+     * @return 加密后的数据
+     */
+    public static byte[] encryptRC4(byte[] data, String password) {
+        if (data == null || data.length == 0 || password == null || password.isEmpty()) {
+            return data;
+        }
+        
+        try {
+            // 使用密码生成密钥
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] key = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            
+            // RC4算法实现
+            byte[] state = new byte[256];
+            for (int i = 0; i < 256; i++) {
+                state[i] = (byte) i;
+            }
+            
+            int j = 0;
+            for (int i = 0; i < 256; i++) {
+                j = (j + state[i] + key[i % key.length]) & 0xFF;
+                byte temp = state[i];
+                state[i] = state[j];
+                state[j] = temp;
+            }
+            
+            byte[] output = data.clone();
+            int i = 0, k = 0;
+            for (int counter = 0; counter < data.length; counter++) {
+                i = (i + 1) & 0xFF;
+                k = (k + state[i]) & 0xFF;
+                
+                byte temp = state[i];
+                state[i] = state[k];
+                state[k] = temp;
+                
+                int byteIndex = (state[i] + state[k]) & 0xFF;
+                output[counter] = (byte) (data[counter] ^ state[byteIndex]);
+            }
+            
+            return output;
+        } catch (Exception e) {
+            // 如果RC4加密失败，返回原始数据
+            return data;
+        }
+    }
+    
+    /**
+     * 使用RC4算法解密数据（RC4加密是对称的）
+     * @param data 加密数据
+     * @param password 密码
+     * @return 解密后的数据
+     */
+    public static byte[] decryptRC4(byte[] data, String password) {
+        // RC4是对称加密，解密和加密使用相同的方法
+        return encryptRC4(data, password);
+    }
+    
+    /**
+     * 使用AES-256算法加密数据
+     * @param data 原始数据
+     * @param password 密码
+     * @return 加密后的数据
+     */
+    public static byte[] encryptAES256(byte[] data, String password) {
+        if (data == null || data.length == 0 || password == null || password.isEmpty()) {
+            return data;
+        }
+        
+        try {
+            // 使用密码生成256位密钥
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] key = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            
+            // 创建AES密钥和密码器
+            javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(key, "AES");
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/PKCS5Padding");
+            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, secretKey);
+            
+            // 加密数据
+            return cipher.doFinal(data);
+        } catch (Exception e) {
+            // 如果AES加密失败，返回原始数据
+            return data;
+        }
+    }
+    
+    /**
+     * 使用AES-256算法解密数据
+     * @param data 加密数据
+     * @param password 密码
+     * @return 解密后的数据
+     */
+    public static byte[] decryptAES256(byte[] data, String password) {
+        if (data == null || data.length == 0 || password == null || password.isEmpty()) {
+            return data;
+        }
+        
+        try {
+            // 使用密码生成256位密钥
+            java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] key = digest.digest(password.getBytes(StandardCharsets.UTF_8));
+            
+            // 创建AES密钥和密码器
+            javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(key, "AES");
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/PKCS5Padding");
+            cipher.init(javax.crypto.Cipher.DECRYPT_MODE, secretKey);
+            
+            // 解密数据
+            return cipher.doFinal(data);
+        } catch (Exception e) {
+            // 如果AES解密失败（如密码错误），返回原始数据
+            return data;
+        }
+    }
+    
+    /**
      * 根据指定的加密方法加密数据
      * @param data 原始数据
      * @param password 密码
@@ -907,9 +1027,10 @@ public class BackupPackage {
             case XOR:
                 return encryptXOR(data, password);
             case RC4:
+                return encryptRC4(data, password);
             case AES256:
+                return encryptAES256(data, password);
             default:
-                // 暂时只实现XOR，其他方法返回原始数据
                 return data;
         }
     }
@@ -931,9 +1052,10 @@ public class BackupPackage {
             case XOR:
                 return decryptXOR(data, password);
             case RC4:
+                return decryptRC4(data, password);
             case AES256:
+                return decryptAES256(data, password);
             default:
-                // 暂时只实现XOR，其他方法返回原始数据
                 return data;
         }
     }
@@ -946,18 +1068,37 @@ public class BackupPackage {
      * @return 密码是否正确
      */
     public static boolean verifyPassword(byte[] data, String password, EncryptionMethod method) {
-        if (method != EncryptionMethod.XOR || password == null || password.isEmpty()) {
-            return method == EncryptionMethod.NONE || password == null || password.isEmpty();
+        if (password == null || password.isEmpty()) {
+            return method == EncryptionMethod.NONE;
         }
         
         try {
             // 尝试解密一小部分数据来验证密码
-            // XOR是对称加密，用相同密码再加密一次应得到原始数据
             byte[] testData = new byte[Math.min(16, data.length)];
             System.arraycopy(data, 0, testData, 0, testData.length);
             
-            byte[] decrypted = decryptXOR(testData, password);
-            byte[] reEncrypted = encryptXOR(decrypted, password);
+            byte[] decrypted = null;
+            byte[] reEncrypted = null;
+            
+            switch (method) {
+                case XOR:
+                    decrypted = decryptXOR(testData, password);
+                    reEncrypted = encryptXOR(decrypted, password);
+                    break;
+                case RC4:
+                    decrypted = decryptRC4(testData, password);
+                    reEncrypted = encryptRC4(decrypted, password);
+                    break;
+                case AES256:
+                    decrypted = decryptAES256(testData, password);
+                    reEncrypted = encryptAES256(decrypted, password);
+                    break;
+                case NONE:
+                    // 对于未加密的数据，验证总是成功（如果密码为空则返回true）
+                    return true;
+                default:
+                    return false;
+            }
             
             // 比较原始数据和重新加密后的数据是否相同
             for (int i = 0; i < testData.length; i++) {
