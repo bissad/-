@@ -593,7 +593,13 @@ public class EnhancedMainController extends MainControllerFixed {
         Task<EnhancedBackupService.VerifyResult> verifyTask = new Task<>() {
             @Override
             protected EnhancedBackupService.VerifyResult call() throws Exception {
-                return enhancedBackupService.verifyPackage(packagePath);
+                // 获取密码 - 使用还原界面的密码框
+                String password = restorePasswordField != null ? restorePasswordField.getText() : null;
+                if (password == null) {
+                    password = "";
+                }
+                // 使用带密码的验证方法
+                return enhancedBackupService.verifyPackage(packagePath, password);
             }
         };
         

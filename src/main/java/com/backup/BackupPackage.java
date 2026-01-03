@@ -9,14 +9,11 @@ import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
+import java.nio.file.attribute.*;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 /**
  * 备份包管理类 - 负责打包和解包操作
@@ -417,41 +414,18 @@ public class BackupPackage {
      * @return 是否成功
      */
     public static boolean extractPackage(String packagePath, String outputDir) throws IOException {
-        Path packageFile = Paths.get(packagePath);
-        Path output = Paths.get(outputDir);
-        
-        if (!Files.exists(packageFile)) {
-            throw new IOException("包文件不存在: " + packagePath);
-        }
-        
-        try (RandomAccessFile raf = new RandomAccessFile(packageFile.toFile(), "r")) {
-            // 读取魔数和版本
-            byte[] magic = new byte[4];
-            raf.readFully(magic);
-            if (!new String(magic, StandardCharsets.UTF_8).equals("FBS1")) {
-                throw new IOException("无效的包文件格式");
-            }
-            
-            int version = raf.readInt();
-            if (version != PACKAGE_VERSION) {
-                throw new IOException("不支持的包版本: " + version);
-            }
-            
-            // 读取Header
-            long manifestOffset = raf.readLong();
-            long manifestLength = raf.readLong();
-            
-            // 读取Manifest
-            raf.seek(manifestOffset);
-            byte[] manifestBytes = new byte[(int) manifestLength];
-            raf.readFully(manifestBytes);
-            String manifestJson = new String(manifestBytes, StandardCharsets.UTF_8);
-            
-            BackupManifest manifest = BackupManifest.fromJson(manifestJson);
-            
-            // 提取文件
-            return extractFilesFromPackage(raf, manifest, output);
-        }
+        return extractPackage(packagePath, outputDir, null, true); // 默认保留元数据
+    }
+    
+    /**
+     * 从包中提取文件（支持控制元数据保留）
+     * @param packagePath 包文件路径
+     * @param outputDir 输出目录
+     * @param preserveMetadata 是否保留元数据
+     * @return 是否成功
+     */
+    public static boolean extractPackage(String packagePath, String outputDir, boolean preserveMetadata) throws IOException {
+        return extractPackage(packagePath, outputDir, null, preserveMetadata);
     }
     
     /**
@@ -462,6 +436,18 @@ public class BackupPackage {
      * @return 是否成功
      */
     public static boolean extractPackage(String packagePath, String outputDir, String password) throws IOException {
+        return extractPackage(packagePath, outputDir, password, true); // 默认保留元数据
+    }
+    
+    /**
+     * 从包中提取文件（支持加密和解压缩，以及控制元数据保留）
+     * @param packagePath 包文件路径
+     * @param outputDir 输出目录
+     * @param password 解密密码（如果需要）
+     * @param preserveMetadata 是否保留元数据
+     * @return 是否成功
+     */
+    public static boolean extractPackage(String packagePath, String outputDir, String password, boolean preserveMetadata) throws IOException {
         Path packageFile = Paths.get(packagePath);
         Path output = Paths.get(outputDir);
         
@@ -495,7 +481,11 @@ public class BackupPackage {
             BackupManifest manifest = BackupManifest.fromJson(manifestJson);
             
             // 提取文件（带解密和解压缩）
-            return extractFilesWithDecryption(raf, manifest, output, password);
+            if (preserveMetadata) {
+                return extractFilesWithDecryption(raf, manifest, output, password);
+            } else {
+                return extractFilesWithDecryption(raf, manifest, output, password, false); // 不保留元数据
+            }
         } catch (IOException e) {
             // 重新抛出IOException，这样调用者可以知道具体错误
             throw e;
@@ -702,6 +692,14 @@ public class BackupPackage {
      */
     private static boolean extractFilesFromPackage(RandomAccessFile raf, BackupManifest manifest, 
                                                   Path outputDir) throws IOException {
+        return extractFilesFromPackage(raf, manifest, outputDir, true); // 默认保留元数据
+    }
+    
+    /**
+     * 从包中提取文件，支持控制元数据保留
+     */
+    private static boolean extractFilesFromPackage(RandomAccessFile raf, BackupManifest manifest, 
+                                                  Path outputDir, boolean preserveMetadata) throws IOException {
         if (!Files.exists(outputDir)) {
             Files.createDirectories(outputDir);
         }
@@ -710,8 +708,62 @@ public class BackupPackage {
             Path targetPath = outputDir.resolve(record.getRelativePath());
             
             if (record.getKind() == BackupService.FileKind.DIRECTORY) {
-                // 创建目录
-                Files.createDirectories(targetPath);
+                // 创建目录（先创建父目录）
+                Path parentPath = targetPath.getParent();
+                if (parentPath != null && !Files.exists(parentPath)) {
+                    Files.createDirectories(parentPath);
+                }
+                
+                // 如果目录不存在则创建
+                if (!Files.exists(targetPath)) {
+                    Files.createDirectory(targetPath);
+                }
+                
+                // 如果保留元数据，设置目录属性
+                if (preserveMetadata) {
+                    try {
+                        // 设置修改时间
+                        if (record.getModifiedAt() > 0) {
+                            FileTime modifiedTime = FileTime.fromMillis(record.getModifiedAt());
+                            Files.setLastModifiedTime(targetPath, modifiedTime);
+                        }
+                        
+                        // 设置访问时间（如果系统支持）
+                        if (record.getAccessedAt() > 0) {
+                            FileTime accessedTime = FileTime.fromMillis(record.getAccessedAt());
+                            try {
+                                Files.setAttribute(targetPath, "lastAccessTime", accessedTime);
+                            } catch (Exception e) {
+                                // 某些系统不支持设置访问时间
+                            }
+                        }
+                        
+                        // 设置权限（如果系统支持）
+                        if (record.getPermissions() > 0) {
+                            try {
+                                PosixFileAttributes posixAttrs = Files.readAttributes(targetPath, PosixFileAttributes.class);
+                                Set<PosixFilePermission> permissions = new java.util.HashSet<>();
+                                permissions.add(PosixFilePermission.OWNER_READ);
+                                if ((record.getPermissions() & 0400) != 0) permissions.add(PosixFilePermission.OWNER_READ);
+                                if ((record.getPermissions() & 0200) != 0) permissions.add(PosixFilePermission.OWNER_WRITE);
+                                if ((record.getPermissions() & 0100) != 0) permissions.add(PosixFilePermission.OWNER_EXECUTE);
+                                if ((record.getPermissions() & 0040) != 0) permissions.add(PosixFilePermission.GROUP_READ);
+                                if ((record.getPermissions() & 0020) != 0) permissions.add(PosixFilePermission.GROUP_WRITE);
+                                if ((record.getPermissions() & 0010) != 0) permissions.add(PosixFilePermission.GROUP_EXECUTE);
+                                if ((record.getPermissions() & 0004) != 0) permissions.add(PosixFilePermission.OTHERS_READ);
+                                if ((record.getPermissions() & 0002) != 0) permissions.add(PosixFilePermission.OTHERS_WRITE);
+                                if ((record.getPermissions() & 0001) != 0) permissions.add(PosixFilePermission.OTHERS_EXECUTE);
+                                
+                                Files.setPosixFilePermissions(targetPath, permissions);
+                            } catch (Exception e) {
+                                // 非POSIX系统，忽略权限设置
+                            }
+                        }
+                    } catch (Exception e) {
+                        // 设置元数据失败，不影响主要功能
+                        System.err.println("设置目录元数据失败: " + targetPath + " - " + e.getMessage());
+                    }
+                }
             } else if (record.getKind() == BackupService.FileKind.REGULAR && record.isHasData()) {
                 // 创建文件并写入数据
                 Files.createDirectories(targetPath.getParent());
@@ -729,6 +781,62 @@ public class BackupPackage {
                 if (!calculatedHash.equals(record.getHash())) {
                     System.err.println("文件哈希验证失败: " + record.getRelativePath());
                 }
+                
+                // 设置文件元数据（如果保留元数据）
+                if (preserveMetadata) {
+                    try {
+                        // 设置修改时间
+                        if (record.getModifiedAt() > 0) {
+                            FileTime modifiedTime = FileTime.fromMillis(record.getModifiedAt());
+                            Files.setLastModifiedTime(targetPath, modifiedTime);
+                        }
+                        
+                        // 设置创建时间（如果系统支持）
+                        if (record.getCreatedAt() > 0) {
+                            FileTime createdTime = FileTime.fromMillis(record.getCreatedAt());
+                            try {
+                                Files.setAttribute(targetPath, "creationTime", createdTime);
+                            } catch (Exception e) {
+                                // 某些系统不支持设置创建时间
+                            }
+                        }
+                        
+                        // 设置访问时间（如果系统支持）
+                        if (record.getAccessedAt() > 0) {
+                            FileTime accessedTime = FileTime.fromMillis(record.getAccessedAt());
+                            try {
+                                Files.setAttribute(targetPath, "lastAccessTime", accessedTime);
+                            } catch (Exception e) {
+                                // 某些系统不支持设置访问时间
+                            }
+                        }
+                        
+                        // 设置权限（如果系统支持）
+                        if (record.getPermissions() > 0) {
+                            try {
+                                PosixFileAttributes posixAttrs = Files.readAttributes(targetPath, PosixFileAttributes.class);
+                                Set<PosixFilePermission> permissions = new java.util.HashSet<>();
+                                permissions.add(PosixFilePermission.OWNER_READ);
+                                if ((record.getPermissions() & 0400) != 0) permissions.add(PosixFilePermission.OWNER_READ);
+                                if ((record.getPermissions() & 0200) != 0) permissions.add(PosixFilePermission.OWNER_WRITE);
+                                if ((record.getPermissions() & 0100) != 0) permissions.add(PosixFilePermission.OWNER_EXECUTE);
+                                if ((record.getPermissions() & 0040) != 0) permissions.add(PosixFilePermission.GROUP_READ);
+                                if ((record.getPermissions() & 0020) != 0) permissions.add(PosixFilePermission.GROUP_WRITE);
+                                if ((record.getPermissions() & 0010) != 0) permissions.add(PosixFilePermission.GROUP_EXECUTE);
+                                if ((record.getPermissions() & 0004) != 0) permissions.add(PosixFilePermission.OTHERS_READ);
+                                if ((record.getPermissions() & 0002) != 0) permissions.add(PosixFilePermission.OTHERS_WRITE);
+                                if ((record.getPermissions() & 0001) != 0) permissions.add(PosixFilePermission.OTHERS_EXECUTE);
+                                
+                                Files.setPosixFilePermissions(targetPath, permissions);
+                            } catch (Exception e) {
+                                // 非POSIX系统，忽略权限设置
+                            }
+                        }
+                    } catch (Exception e) {
+                        // 设置元数据失败，不影响主要功能
+                        System.err.println("设置文件元数据失败: " + targetPath + " - " + e.getMessage());
+                    }
+                }
             }
         }
         
@@ -740,6 +848,14 @@ public class BackupPackage {
      */
     private static boolean extractFilesWithDecryption(RandomAccessFile raf, BackupManifest manifest, 
                                                      Path outputDir, String password) throws IOException {
+        return extractFilesWithDecryption(raf, manifest, outputDir, password, true); // 默认保留元数据
+    }
+    
+    /**
+     * 提取文件（支持解密和解压缩，以及控制元数据保留）
+     */
+    private static boolean extractFilesWithDecryption(RandomAccessFile raf, BackupManifest manifest, 
+                                                     Path outputDir, String password, boolean preserveMetadata) throws IOException {
         if (!Files.exists(outputDir)) {
             Files.createDirectories(outputDir);
         }
@@ -748,8 +864,62 @@ public class BackupPackage {
             Path targetPath = outputDir.resolve(record.getRelativePath());
             
             if (record.getKind() == BackupService.FileKind.DIRECTORY) {
-                // 创建目录
-                Files.createDirectories(targetPath);
+                // 创建目录（先创建父目录）
+                Path parentPath = targetPath.getParent();
+                if (parentPath != null && !Files.exists(parentPath)) {
+                    Files.createDirectories(parentPath);
+                }
+                
+                // 如果目录不存在则创建
+                if (!Files.exists(targetPath)) {
+                    Files.createDirectory(targetPath);
+                }
+                
+                // 如果保留元数据，设置目录属性
+                if (preserveMetadata) {
+                    try {
+                        // 设置修改时间
+                        if (record.getModifiedAt() > 0) {
+                            FileTime modifiedTime = FileTime.fromMillis(record.getModifiedAt());
+                            Files.setLastModifiedTime(targetPath, modifiedTime);
+                        }
+                        
+                        // 设置访问时间（如果系统支持）
+                        if (record.getAccessedAt() > 0) {
+                            FileTime accessedTime = FileTime.fromMillis(record.getAccessedAt());
+                            try {
+                                Files.setAttribute(targetPath, "lastAccessTime", accessedTime);
+                            } catch (Exception e) {
+                                // 某些系统不支持设置访问时间
+                            }
+                        }
+                        
+                        // 设置权限（如果系统支持）
+                        if (record.getPermissions() > 0) {
+                            try {
+                                PosixFileAttributes posixAttrs = Files.readAttributes(targetPath, PosixFileAttributes.class);
+                                Set<PosixFilePermission> permissions = new java.util.HashSet<>();
+                                permissions.add(PosixFilePermission.OWNER_READ);
+                                if ((record.getPermissions() & 0400) != 0) permissions.add(PosixFilePermission.OWNER_READ);
+                                if ((record.getPermissions() & 0200) != 0) permissions.add(PosixFilePermission.OWNER_WRITE);
+                                if ((record.getPermissions() & 0100) != 0) permissions.add(PosixFilePermission.OWNER_EXECUTE);
+                                if ((record.getPermissions() & 0040) != 0) permissions.add(PosixFilePermission.GROUP_READ);
+                                if ((record.getPermissions() & 0020) != 0) permissions.add(PosixFilePermission.GROUP_WRITE);
+                                if ((record.getPermissions() & 0010) != 0) permissions.add(PosixFilePermission.GROUP_EXECUTE);
+                                if ((record.getPermissions() & 0004) != 0) permissions.add(PosixFilePermission.OTHERS_READ);
+                                if ((record.getPermissions() & 0002) != 0) permissions.add(PosixFilePermission.OTHERS_WRITE);
+                                if ((record.getPermissions() & 0001) != 0) permissions.add(PosixFilePermission.OTHERS_EXECUTE);
+                                
+                                Files.setPosixFilePermissions(targetPath, permissions);
+                            } catch (Exception e) {
+                                // 非POSIX系统，忽略权限设置
+                            }
+                        }
+                    } catch (Exception e) {
+                        // 设置元数据失败，不影响主要功能
+                        System.err.println("设置目录元数据失败: " + targetPath + " - " + e.getMessage());
+                    }
+                }
             } else if (record.getKind() == BackupService.FileKind.REGULAR && record.isHasData()) {
                 // 创建文件并写入数据
                 Files.createDirectories(targetPath.getParent());
@@ -782,6 +952,62 @@ public class BackupPackage {
                 String calculatedHash = calculateHash(fileData);
                 if (!calculatedHash.equals(record.getHash())) {
                     System.err.println("文件哈希验证失败: " + record.getRelativePath());
+                }
+                
+                // 设置文件元数据（如果保留元数据）
+                if (preserveMetadata) {
+                    try {
+                        // 设置修改时间
+                        if (record.getModifiedAt() > 0) {
+                            FileTime modifiedTime = FileTime.fromMillis(record.getModifiedAt());
+                            Files.setLastModifiedTime(targetPath, modifiedTime);
+                        }
+                        
+                        // 设置创建时间（如果系统支持）
+                        if (record.getCreatedAt() > 0) {
+                            FileTime createdTime = FileTime.fromMillis(record.getCreatedAt());
+                            try {
+                                Files.setAttribute(targetPath, "creationTime", createdTime);
+                            } catch (Exception e) {
+                                // 某些系统不支持设置创建时间
+                            }
+                        }
+                        
+                        // 设置访问时间（如果系统支持）
+                        if (record.getAccessedAt() > 0) {
+                            FileTime accessedTime = FileTime.fromMillis(record.getAccessedAt());
+                            try {
+                                Files.setAttribute(targetPath, "lastAccessTime", accessedTime);
+                            } catch (Exception e) {
+                                // 某些系统不支持设置访问时间
+                            }
+                        }
+                        
+                        // 设置权限（如果系统支持）
+                        if (record.getPermissions() > 0) {
+                            try {
+                                PosixFileAttributes posixAttrs = Files.readAttributes(targetPath, PosixFileAttributes.class);
+                                Set<PosixFilePermission> permissions = new java.util.HashSet<>();
+                                permissions.add(PosixFilePermission.OWNER_READ);
+                                if ((record.getPermissions() & 0400) != 0) permissions.add(PosixFilePermission.OWNER_READ);
+                                if ((record.getPermissions() & 0200) != 0) permissions.add(PosixFilePermission.OWNER_WRITE);
+                                if ((record.getPermissions() & 0100) != 0) permissions.add(PosixFilePermission.OWNER_EXECUTE);
+                                if ((record.getPermissions() & 0040) != 0) permissions.add(PosixFilePermission.GROUP_READ);
+                                if ((record.getPermissions() & 0020) != 0) permissions.add(PosixFilePermission.GROUP_WRITE);
+                                if ((record.getPermissions() & 0010) != 0) permissions.add(PosixFilePermission.GROUP_EXECUTE);
+                                if ((record.getPermissions() & 0004) != 0) permissions.add(PosixFilePermission.OTHERS_READ);
+                                if ((record.getPermissions() & 0002) != 0) permissions.add(PosixFilePermission.OTHERS_WRITE);
+                                if ((record.getPermissions() & 0001) != 0) permissions.add(PosixFilePermission.OTHERS_EXECUTE);
+                                
+                                Files.setPosixFilePermissions(targetPath, permissions);
+                            } catch (Exception e) {
+                                // 非POSIX系统，忽略权限设置
+                            }
+                        }
+                    } catch (Exception e) {
+                        // 设置元数据失败，不影响主要功能
+                        System.err.println("设置文件元数据失败: " + targetPath + " - " + e.getMessage());
+                    }
                 }
             }
         }
@@ -1484,6 +1710,17 @@ public class BackupPackage {
      * @return 是否验证成功
      */
     public static boolean verifyPackage(String packagePath) throws IOException {
+        // 调用重载方法，不提供密码，仅验证存储数据的完整性
+        return verifyPackage(packagePath, null);
+    }
+    
+    /**
+     * 验证包文件的完整性（支持加密包）
+     * @param packagePath 包文件路径
+     * @param password 解密密码（如果包被加密）
+     * @return 是否验证成功
+     */
+    public static boolean verifyPackage(String packagePath, String password) throws IOException {
         Path packageFile = Paths.get(packagePath);
         
         if (!Files.exists(packageFile)) {
@@ -1523,10 +1760,42 @@ public class BackupPackage {
                     byte[] fileData = new byte[(int) record.getStoredSize()];
                     raf.readFully(fileData);
                     
-                    // 计算哈希并验证
+                    // 如果数据被压缩且加密，备份时的处理顺序是：原始数据 -> 压缩 -> 加密
+                    // 验证时需要逆向：加密数据 -> 解密 -> 解压 -> 原始数据
+                    
+                    // 如果数据被加密，先解密
+                    if (record.isEncrypted()) {
+                        if (password == null || password.isEmpty()) {
+                            throw new IOException("包文件已加密，需要提供密码进行验证: " + record.getRelativePath());
+                        }
+                        
+                        try {
+                            // 对于AES加密，可能需要特殊处理，先尝试解密
+                            fileData = decryptData(fileData, password, record.getEncryptionMethod());
+                            
+                            // 检查解密是否成功 - AES解密失败时可能不会抛出异常但会产生乱码
+                            // 这里我们继续进行哈希比较，如果哈希不匹配则说明解密失败
+                        } catch (Exception e) {
+                            throw new IOException("密码错误或解密失败: 无法验证文件 " + record.getRelativePath() + " - " + e.getMessage());
+                        }
+                    }
+                    
+                    // 如果数据被压缩（注意：解密后才解压）
+                    if (record.isCompressed()) {
+                        fileData = decompressData(fileData, record.getCompressionMethod());
+                    }
+                    
+                    // 计算最终解密/解压后数据的哈希（即原始数据的哈希）
                     String calculatedHash = calculateHash(fileData);
                     if (!calculatedHash.equals(record.getHash())) {
-                        System.err.println("文件哈希验证失败: " + record.getRelativePath());
+                        if (record.isEncrypted() && (password == null || password.isEmpty())) {
+                            throw new IOException("包文件已加密，需要提供密码进行完整验证: " + record.getRelativePath());
+                        }
+                        System.err.println("文件哈希验证失败: " + record.getRelativePath() + 
+                                         " (Expected: " + record.getHash() + 
+                                         ", Got: " + calculatedHash + 
+                                         ", Encrypted: " + record.isEncrypted() + 
+                                         ", Compressed: " + record.isCompressed() + ")");
                         return false;
                     }
                 }

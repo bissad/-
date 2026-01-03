@@ -285,14 +285,14 @@ public class EnhancedBackupService extends BackupService {
         Path targetPath = Paths.get(targetDir);
         
         try {
-            // 提取包文件（支持解密）
+            // 提取包文件（支持解密和元数据保留）
             boolean success;
             if (options.isEncrypt() && options.getPassword() != null && !options.getPassword().isEmpty()) {
-                // 使用支持密码的版本
-                success = BackupPackage.extractPackage(packagePathStr, targetDir, options.getPassword());
+                // 使用支持密码和元数据保留的版本
+                success = BackupPackage.extractPackage(packagePathStr, targetDir, options.getPassword(), options.isPreserveMetadata());
             } else {
-                // 使用普通版本
-                success = BackupPackage.extractPackage(packagePathStr, targetDir);
+                // 使用支持元数据保留的版本
+                success = BackupPackage.extractPackage(packagePathStr, targetDir, options.isPreserveMetadata());
             }
             
             if (success) {
@@ -412,8 +412,15 @@ public class EnhancedBackupService extends BackupService {
      * 验证备份包
      */
     public VerifyResult verifyPackage(String packagePathStr) throws IOException {
+        return verifyPackage(packagePathStr, null);  // 不提供密码，仅验证存储的数据完整性
+    }
+    
+    /**
+     * 验证备份包（支持加密包）
+     */
+    public VerifyResult verifyPackage(String packagePathStr, String password) throws IOException {
         try {
-            boolean success = BackupPackage.verifyPackage(packagePathStr);
+            boolean success = BackupPackage.verifyPackage(packagePathStr, password);
             if (success) {
                 // 获取包信息以统计文件数量
                 BackupPackage.BackupManifest manifest = BackupPackage.getPackageInfo(packagePathStr);
