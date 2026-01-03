@@ -7,16 +7,16 @@ import javafx.scene.Scene;
 import javafx.stage.Stage;
 
 /**
- * 增强版备份应用程序 - 支持打包功能
+ * 备份应用程序 - 支持打包功能
  */
 public class EnhancedBackupApplication extends Application {
     
     @Override
     public void start(Stage primaryStage) throws Exception {
-        // 加载增强版的FXML文件
+        // 加载支持打包功能的FXML文件
         Parent root = FXMLLoader.load(getClass().getResource("/main-view-enhanced.fxml"));
         
-        primaryStage.setTitle("文件备份软件 - 增强版 (支持打包功能)");
+        primaryStage.setTitle("文件备份软件 (支持打包功能)");
         primaryStage.setScene(new Scene(root, 900, 750));
         primaryStage.setMinWidth(700);
         primaryStage.setMinHeight(500);

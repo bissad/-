@@ -1,4 +1,4 @@
-# 文件备份软件 - 增强版
+# 文件备份软件
 
 基于JavaFX的桌面备份工具，支持文件夹备份、打包、压缩和加密功能。
 
@@ -56,20 +56,20 @@ java -jar target/backup-software-1.0-SNAPSHOT.jar
 ```
 src/main/java/com/backup/
 ├── BackupApplication.java          # 基础应用程序入口
-├── EnhancedBackupApplication.java  # 增强版应用程序入口
-├── MainController.java             # 基础UI控制器
+├── EnhancedBackupApplication.java  # 应用程序入口
+├── MainController.java             # UI控制器
 ├── MainControllerFixed.java        # 修复版UI控制器
-├── EnhancedMainController.java     # 增强版UI控制器
-├── BackupService.java              # 基础备份服务
-├── EnhancedBackupService.java      # 增强备份服务
+├── EnhancedMainController.java     # UI控制器
+├── BackupService.java              # 备份服务
+├── EnhancedBackupService.java      # 备强备份服务
 ├── BackupPackage.java              # 打包/解包核心逻辑
 ├── TestExtract.java                # 测试类
 └── TestPackage.java                # 测试类
 
 src/main/resources/
-├── main-view.fxml                   # 基础UI布局
-├── main-view-enhanced.fxml          # 增强版UI布局
-└── main-view-simple.fxml            # 简化版UI布局
+├── main-view.fxml                   # UI布局
+├── main-view-enhanced.fxml          # UI布局
+└── main-view-simple.fxml            # UI布局
 ```
 
 ## 技术栈

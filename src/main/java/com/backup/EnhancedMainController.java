@@ -22,7 +22,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 增强的主控制器 - 扩展原有MainController，添加打包功能
+ * 主控制器 - 扩展原有MainController，添加打包功能
  */
 public class EnhancedMainController extends MainControllerFixed {
     
@@ -100,7 +100,7 @@ public class EnhancedMainController extends MainControllerFixed {
         // 调用父类的初始化
         super.initialize();
         
-        // 初始化增强服务
+        // 初始化备份服务
         enhancedBackupService = new EnhancedBackupService();
         
         // 初始化打包选项UI
@@ -258,7 +258,7 @@ public class EnhancedMainController extends MainControllerFixed {
     }
     
     /**
-     * 处理增强备份按钮点击
+     * 处理备份按钮点击
      */
     @FXML
     private void handleEnhancedBackup() {
@@ -292,7 +292,7 @@ public class EnhancedMainController extends MainControllerFixed {
             return;
         }
         
-        // 创建增强备份选项
+        // 创建备份选项
         EnhancedBackupService.EnhancedBackupOptions options = createEnhancedBackupOptions();
         
         // 执行备份
@@ -300,7 +300,7 @@ public class EnhancedMainController extends MainControllerFixed {
     }
     
     /**
-     * 创建增强备份选项
+     * 创建备份选项
      */
     private EnhancedBackupService.EnhancedBackupOptions createEnhancedBackupOptions() {
         EnhancedBackupService.EnhancedBackupOptions options = 
@@ -344,7 +344,7 @@ public class EnhancedMainController extends MainControllerFixed {
     }
     
     /**
-     * 执行增强备份
+     * 执行备份
      */
     private void performEnhancedBackup(String target, EnhancedBackupService.EnhancedBackupOptions options) {
         backupButton.setDisable(true);
@@ -406,7 +406,7 @@ public class EnhancedMainController extends MainControllerFixed {
     }
     
     /**
-     * 处理增强还原按钮点击
+     * 处理还原按钮点击
      */
     @FXML
     private void handleEnhancedRestore() {
@@ -475,7 +475,7 @@ public class EnhancedMainController extends MainControllerFixed {
     }
     
     /**
-     * 创建增强还原选项
+     * 创建还原选项
      */
     private EnhancedBackupService.EnhancedBackupOptions createEnhancedRestoreOptions() {
         EnhancedBackupService.EnhancedBackupOptions options = 

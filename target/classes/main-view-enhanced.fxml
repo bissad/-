@@ -15,7 +15,7 @@
         <Insets top="30" right="30" bottom="30" left="30"/>
     </padding>
     
-    <Label text="文件备份软件 - 增强版" 
+    <Label text="文件备份软件" 
            style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"
            alignment="CENTER" textAlignment="CENTER"
            maxWidth="Infinity">
@@ -24,7 +24,7 @@
         </VBox.margin>
     </Label>
     
-    <Label text="支持打包、压缩、加密的备份工具" 
+    <Label text="支持备份、打包、压缩、加密的工具" 
            style="-fx-font-size: 14px; -fx-text-fill: #7f8c8d;"
            alignment="CENTER" textAlignment="CENTER"
            maxWidth="Infinity">
@@ -47,18 +47,18 @@
                             <Insets top="20" right="20" bottom="20" left="20"/>
                         </padding>
                         <VBox spacing="12" maxWidth="Infinity" VBox.vgrow="ALWAYS">
-                            <Label text="源路径（要备份的文件或文件夹）" 
+                            <Label text="源文件/文件夹" 
                                    style="-fx-font-size: 16px; -fx-font-weight: bold; -fx-text-fill: #34495e;"/>
                             <ListView fx:id="sourceListView" prefHeight="180" minHeight="150" maxHeight="300" maxWidth="Infinity" VBox.vgrow="ALWAYS"
                                       style="-fx-background-color: white; -fx-background-radius: 8; -fx-border-color: #ddd; -fx-border-radius: 8; -fx-border-width: 1;"/>
                             <HBox spacing="12" alignment="CENTER_LEFT">
-                                <Button fx:id="addFolderButton" text="📁 添加文件夹" onAction="#handleAddFolder"
-                                        style="-fx-min-width: 120px; -fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-font-size: 12px;"/>
-                                <Button fx:id="addFileButton" text="📄 添加文件" onAction="#handleAddFile"
-                                        style="-fx-min-width: 100px; -fx-background-color: #9b59b6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-font-size: 12px;"/>
-                                <Button fx:id="removeSourceButton" text="🗑️ 删除选中" onAction="#handleRemoveSource"
-                                        style="-fx-min-width: 100px; -fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-font-size: 12px;"/>
-                                <Label text="提示: 可同时添加多个文件和文件夹" 
+                                <Button fx:id="addFolderButton" text="📁 文件夹" onAction="#handleAddFolder"
+                                        style="-fx-min-width: 100px; -fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-font-size: 12px;"/>
+                                <Button fx:id="addFileButton" text="📄 文件" onAction="#handleAddFile"
+                                        style="-fx-min-width: 80px; -fx-background-color: #9b59b6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-font-size: 12px;"/>
+                                <Button fx:id="removeSourceButton" text="🗑️ 删除" onAction="#handleRemoveSource"
+                                        style="-fx-min-width: 80px; -fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 6; -fx-font-size: 12px;"/>
+                                <Label text="ⓘ 多选添加" 
                                        style="-fx-font-size: 11px; -fx-text-fill: #7f8c8d; -fx-font-style: italic;"/>
                             </HBox>
                         </VBox>
@@ -69,17 +69,17 @@
                                 <ColumnConstraints percentWidth="70"/>
                             </columnConstraints>
                             
-                            <Label text="目标目录:" 
+                            <Label text="备份到:" 
                                    style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #34495e;" 
                                    GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                             <HBox spacing="8" GridPane.rowIndex="0" GridPane.columnIndex="1">
-                                <TextField fx:id="targetField" promptText="选择备份目标目录..." HBox.hgrow="ALWAYS"
+                                <TextField fx:id="targetField" promptText="选择备份目标..." HBox.hgrow="ALWAYS"
                                            style="-fx-background-radius: 4; -fx-border-color: #ddd; -fx-border-radius: 4; -fx-padding: 6; -fx-font-size: 13px;"/>
                                 <Button fx:id="targetButton" text="📁 浏览" onAction="#handleSelectTarget"
                                         style="-fx-min-width: 80px; -fx-background-color: #95a5a6; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 4; -fx-font-size: 12px;"/>
                             </HBox>
                             
-                            <Label text="备份选项:" 
+                            <Label text="选项:" 
                                    style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #34495e;" 
                                    GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                             <HBox spacing="12" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="1">
@@ -89,7 +89,7 @@
                                           style="-fx-font-size: 13px; -fx-text-fill: #34495e;"/>
                                 <CheckBox fx:id="packageModeCheck" text="打包模式" 
                                           style="-fx-font-size: 13px; -fx-text-fill: #34495e;"/>
-                                <Label text="ⓘ 特殊文件包括符号链接、管道等" 
+                                <Label text="ⓘ 包含符号链接、管道等" 
                                        style="-fx-font-size: 11px; -fx-text-fill: #7f8c8d;"/>
                             </HBox>
                         </GridPane>
@@ -116,7 +116,7 @@
                                 <!-- 压缩选项 -->
                                 <VBox fx:id="compressOptionsBox" spacing="6" visible="false" GridPane.rowIndex="1" GridPane.columnIndex="0" GridPane.columnSpan="2">
                                     <HBox spacing="8" alignment="CENTER_LEFT">
-                                        <Label text="压缩方法:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;"/>
+                                        <Label text="压缩方式:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;"/>
                                         <ComboBox fx:id="compressionMethodCombo" prefWidth="130" 
                                                   style="-fx-font-size: 12px;"/>
                                     </HBox>
@@ -125,19 +125,19 @@
                                 <!-- 加密选项 -->
                                 <VBox fx:id="encryptOptionsBox" spacing="6" visible="false" GridPane.rowIndex="2" GridPane.columnIndex="0" GridPane.columnSpan="2">
                                     <HBox spacing="8" alignment="CENTER_LEFT">
-                                        <Label text="加密方法:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;"/>
+                                        <Label text="加密方式:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;"/>
                                         <ComboBox fx:id="encryptionMethodCombo" prefWidth="130" 
                                                   style="-fx-font-size: 12px;"/>
                                     </HBox>
                                     <HBox spacing="8" alignment="CENTER_LEFT">
                                         <Label text="密码:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;"/>
-                                        <PasswordField fx:id="passwordField" promptText="输入加密密码" prefWidth="180"
+                                        <PasswordField fx:id="passwordField" promptText="输入密码" prefWidth="180"
                                                        style="-fx-font-size: 12px; -fx-background-radius: 3; -fx-border-color: #ddd; -fx-border-radius: 3; -fx-padding: 4;"/>
                                     </HBox>
                                 </VBox>
                                 
                                 <!-- 备份名称 -->
-                                <Label text="备份名称:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                                <Label text="备份名:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
                                 <TextField fx:id="backupNameField" promptText="输入备份名称（可选）" 
                                            style="-fx-font-size: 13px; -fx-background-radius: 3; -fx-border-color: #ddd; -fx-border-radius: 3; -fx-padding: 4;" 
                                            GridPane.rowIndex="3" GridPane.columnIndex="1"/>
@@ -169,7 +169,7 @@
                               style="-fx-background-color: white; -fx-padding: 12; -fx-background-radius: 8; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 6, 0, 0, 2); -fx-border-color: #ecf0f1; -fx-border-width: 1;"
                               visible="false" maxWidth="Infinity">
                             <HBox spacing="10" alignment="CENTER_LEFT">
-                                <Label text="✅ 备份结果" 
+                                <Label text="✅ 备份完成" 
                                        style="-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: #27ae60;"/>
                                 <Separator HBox.hgrow="ALWAYS" style="-fx-background-color: #ecf0f1;"/>
                             </HBox>
@@ -178,13 +178,13 @@
                                     <ColumnConstraints percentWidth="40"/>
                                     <ColumnConstraints percentWidth="60"/>
                                 </columnConstraints>
-                                <Label text="文件备份:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                <Label text="文件:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                                 <Label fx:id="filesCopiedLabel" text="0" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
                                 
-                                <Label text="目录创建:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                <Label text="目录:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                                 <Label fx:id="directoriesCreatedLabel" text="0" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
                                 
-                                <Label text="总大小:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                <Label text="大小:" style="-fx-font-size: 13px; -fx-text-fill: #34495e;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
                                 <Label fx:id="totalSizeLabel" text="0 B" style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
                             </GridPane>
                         </VBox>
@@ -201,7 +201,7 @@
                         
                         <!-- 目录还原选项 -->
                         <VBox fx:id="directoryRestoreBox" spacing="6" VBox.vgrow="ALWAYS" style="-fx-padding: 8; -fx-background-color: #f8f9fa; -fx-background-radius: 6;">
-                            <Label text="📁 目录还原（原有备份记录）" 
+                            <Label text="📁 历史备份" 
                                    style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
                             <ListView fx:id="restoreSourceListView" prefHeight="150" minHeight="120" maxHeight="250" maxWidth="Infinity" VBox.vgrow="ALWAYS"
                                       style="-fx-background-color: white; -fx-background-radius: 4; -fx-border-color: #ddd; -fx-border-radius: 4; -fx-border-width: 1;"/>
@@ -212,7 +212,7 @@
                                         style="-fx-min-width: 70px; -fx-background-color: #e74c3c; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 3; -fx-font-size: 11px;"/>
                                 <Button fx:id="refreshRestoreButton" text="🔄 刷新" onAction="#handleRefreshRestoreList"
                                         style="-fx-min-width: 70px; -fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 3; -fx-font-size: 11px;"/>
-                                <Label text="ⓘ 选择要还原的备份项" 
+                                <Label text="ⓘ 选择还原项" 
                                        style="-fx-font-size: 10px; -fx-text-fill: #7f8c8d;"/>
                             </HBox>
                         </VBox>
@@ -222,9 +222,9 @@
                             <Label text="🔄 还原模式" 
                                    style="-fx-font-size: 14px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;"/>
                             <HBox spacing="10" alignment="CENTER_LEFT">
-                                <CheckBox fx:id="restoreFromPackageCheck" text="从包文件还原 (.fbk)" 
+                                <CheckBox fx:id="restoreFromPackageCheck" text="包文件还原 (.fbk)" 
                                           style="-fx-font-size: 12px; -fx-text-fill: #34495e;"/>
-                                <Label text="ⓘ 选择备份模式进行还原" 
+                                <Label text="ⓘ 从.fbk文件还原" 
                                        style="-fx-font-size: 10px; -fx-text-fill: #7f8c8d;"/>
                             </HBox>
                         </VBox>
@@ -241,7 +241,7 @@
                                 </columnConstraints>
                                 
                                 <!-- 包文件选择 -->
-                                <Label text="包文件:" style="-fx-font-size: 12px; -fx-text-fill: #34495e;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                <Label text="文件:" style="-fx-font-size: 12px; -fx-text-fill: #34495e;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                                 <HBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="1">
                                     <TextField fx:id="packagePathField" promptText="选择.fbk文件" HBox.hgrow="ALWAYS"
                                                style="-fx-background-radius: 3; -fx-border-color: #ddd; -fx-border-radius: 3; -fx-padding: 4; -fx-font-size: 12px;"/>
@@ -250,7 +250,7 @@
                                 </HBox>
                                 
                                 <!-- 验证按钮和信息显示 -->
-                                <Label text="操作:" style="-fx-font-size: 12px; -fx-text-fill: #34495e;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                <Label text="验证:" style="-fx-font-size: 12px; -fx-text-fill: #34495e;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                                 <HBox spacing="6" GridPane.rowIndex="1" GridPane.columnIndex="1">
                                     <Button text="🔍" onAction="#handleVerifyPackage"
                                             style="-fx-min-width: 50px; -fx-background-color: #3498db; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 3; -fx-font-size: 11px;"/>
@@ -266,7 +266,7 @@
                                         <PasswordField fx:id="restorePasswordField" promptText="输入密码" HBox.hgrow="ALWAYS"
                                                        style="-fx-background-radius: 3; -fx-border-color: #ddd; -fx-border-radius: 3; -fx-padding: 4; -fx-font-size: 12px;"/>
                                     </HBox>
-                                    <Label text="ⓘ 如包已加密，需输入密码" 
+                                    <Label text="ⓘ 如需解密" 
                                            style="-fx-font-size: 9px; -fx-font-style: italic; -fx-text-fill: #7f8c8d;"/>
                                 </VBox>
                             </GridPane>
@@ -279,7 +279,7 @@
                                 <ColumnConstraints percentWidth="70"/>
                             </columnConstraints>
                             
-                            <Label text="还原目标:" 
+                            <Label text="还原到:" 
                                    style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #34495e;" 
                                    GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                             <HBox spacing="6" GridPane.rowIndex="0" GridPane.columnIndex="1">
@@ -289,13 +289,13 @@
                                         style="-fx-min-width: 50px; -fx-background-color: #7f8c8d; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 3; -fx-font-size: 11px;"/>
                             </HBox>
                             
-                            <Label text="还原选项:" 
+                            <Label text="选项:" 
                                    style="-fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #34495e;" 
                                    GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                             <HBox spacing="8" alignment="CENTER_LEFT" GridPane.rowIndex="1" GridPane.columnIndex="1">
                                 <CheckBox fx:id="restorePreserveMetadataCheck" text="保留元数据" selected="true"
                                           style="-fx-font-size: 12px; -fx-text-fill: #34495e;"/>
-                                <Label text="ⓘ 特殊文件以记录形式恢复" 
+                                <Label text="ⓘ 特殊文件以记录恢复" 
                                        style="-fx-font-size: 10px; -fx-text-fill: #7f8c8d;"/>
                             </HBox>
                         </GridPane>
@@ -322,7 +322,7 @@
                               style="-fx-background-color: white; -fx-padding: 8; -fx-background-radius: 6; -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.1), 4, 0, 0, 2); -fx-border-color: #ecf0f1; -fx-border-width: 1;"
                               visible="false" maxWidth="Infinity">
                             <HBox spacing="8" alignment="CENTER_LEFT">
-                                <Label text="✅ 还原结果" 
+                                <Label text="✅ 还原完成" 
                                        style="-fx-font-weight: bold; -fx-font-size: 14px; -fx-text-fill: #27ae60;"/>
                                 <Separator HBox.hgrow="ALWAYS" style="-fx-background-color: #ecf0f1;"/>
                             </HBox>
@@ -331,13 +331,13 @@
                                     <ColumnConstraints percentWidth="40"/>
                                     <ColumnConstraints percentWidth="60"/>
                                 </columnConstraints>
-                                <Label text="文件还原:" style="-fx-font-size: 12px; -fx-text-fill: #34495e;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                                <Label text="文件:" style="-fx-font-size: 12px; -fx-text-fill: #34495e;" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
                                 <Label fx:id="restoreFilesCopiedLabel" text="0" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
                                 
-                                <Label text="目录创建:" style="-fx-font-size: 12px; -fx-text-fill: #34495e;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                                <Label text="目录:" style="-fx-font-size: 12px; -fx-text-fill: #34495e;" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
                                 <Label fx:id="restoreDirectoriesCreatedLabel" text="0" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
                                 
-                                <Label text="总大小:" style="-fx-font-size: 12px; -fx-text-fill: #34495e;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                                <Label text="大小:" style="-fx-font-size: 12px; -fx-text-fill: #34495e;" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
                                 <Label fx:id="restoreTotalSizeLabel" text="0 B" style="-fx-font-size: 12px; -fx-font-weight: bold; -fx-text-fill: #2c3e50;" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
                             </GridPane>
                         </VBox>

@@ -1477,4 +1477,65 @@ public class BackupPackage {
                 return data;
         }
     }
+    
+    /**
+     * 验证包文件的完整性
+     * @param packagePath 包文件路径
+     * @return 是否验证成功
+     */
+    public static boolean verifyPackage(String packagePath) throws IOException {
+        Path packageFile = Paths.get(packagePath);
+        
+        if (!Files.exists(packageFile)) {
+            throw new IOException("包文件不存在: " + packagePath);
+        }
+        
+        try (RandomAccessFile raf = new RandomAccessFile(packageFile.toFile(), "r")) {
+            // 读取魔数和版本
+            byte[] magic = new byte[4];
+            raf.readFully(magic);
+            if (!new String(magic, StandardCharsets.UTF_8).equals("FBS1")) {
+                throw new IOException("无效的包文件格式");
+            }
+            
+            int version = raf.readInt();
+            if (version != PACKAGE_VERSION) {
+                throw new IOException("不支持的包版本: " + version);
+            }
+            
+            // 读取Header
+            long manifestOffset = raf.readLong();
+            long manifestLength = raf.readLong();
+            
+            // 读取Manifest
+            raf.seek(manifestOffset);
+            byte[] manifestBytes = new byte[(int) manifestLength];
+            raf.readFully(manifestBytes);
+            String manifestJson = new String(manifestBytes, StandardCharsets.UTF_8);
+            
+            BackupManifest manifest = BackupManifest.fromJson(manifestJson);
+            
+            // 验证所有文件的哈希
+            for (FileRecord record : manifest.getFiles()) {
+                if (record.isHasData()) {
+                    // 定位并读取数据
+                    raf.seek(record.getDataOffset());
+                    byte[] fileData = new byte[(int) record.getStoredSize()];
+                    raf.readFully(fileData);
+                    
+                    // 计算哈希并验证
+                    String calculatedHash = calculateHash(fileData);
+                    if (!calculatedHash.equals(record.getHash())) {
+                        System.err.println("文件哈希验证失败: " + record.getRelativePath());
+                        return false;
+                    }
+                }
+            }
+            
+            return true;
+        } catch (Exception e) {
+            System.err.println("包验证失败: " + e.getMessage());
+            return false;
+        }
+    }
 }
