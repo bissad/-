@@ -930,14 +930,17 @@ public class BackupPackage {
                 raf.readFully(fileData);
                 
                 // 解密数据（如果需要）
-                if (record.isEncrypted() && password != null && !password.isEmpty()) {
-                    // 验证密码是否正确
-                    if (!verifyPassword(fileData, password, record.getEncryptionMethod())) {
-                        throw new IOException("密码错误: 无法解密文件 " + record.getRelativePath());
+                if (record.isEncrypted()) {
+                    if (password == null || password.isEmpty()) {
+                        throw new IOException("文件已加密，但未提供密码: " + record.getRelativePath());
                     }
-                    fileData = decryptData(fileData, password, record.getEncryptionMethod());
-                } else if (record.isEncrypted() && (password == null || password.isEmpty())) {
-                    throw new IOException("文件已加密，但未提供密码: " + record.getRelativePath());
+                    
+                    try {
+                        // 直接尝试解密，如果密码错误会抛出异常
+                        fileData = decryptData(fileData, password, record.getEncryptionMethod());
+                    } catch (Exception e) {
+                        throw new IOException("密码错误或解密失败: 无法解密文件 " + record.getRelativePath() + " - " + e.getMessage());
+                    }
                 }
                 
                 // 解压缩数据（如果需要）
@@ -1195,22 +1198,35 @@ public class BackupPackage {
             java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
             byte[] key = digest.digest(password.getBytes(StandardCharsets.UTF_8));
             
-            // 创建AES密钥和密码器
+            // 生成随机IV（初始化向量）
+            java.security.SecureRandom random = new java.security.SecureRandom();
+            byte[] iv = new byte[16];
+            random.nextBytes(iv);
+            
+            // 创建AES密钥和密码器（使用CBC模式，更安全）
             javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(key, "AES");
-            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/PKCS5Padding");
-            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, secretKey);
+            javax.crypto.spec.IvParameterSpec ivSpec = new javax.crypto.spec.IvParameterSpec(iv);
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(javax.crypto.Cipher.ENCRYPT_MODE, secretKey, ivSpec);
             
             // 加密数据
-            return cipher.doFinal(data);
+            byte[] encrypted = cipher.doFinal(data);
+            
+            // 将IV和加密数据合并：IV + 加密数据
+            byte[] result = new byte[iv.length + encrypted.length];
+            System.arraycopy(iv, 0, result, 0, iv.length);
+            System.arraycopy(encrypted, 0, result, iv.length, encrypted.length);
+            
+            return result;
         } catch (Exception e) {
-            // 如果AES加密失败，返回原始数据
-            return data;
+            // 如果AES加密失败，抛出异常
+            throw new RuntimeException("AES加密失败: " + e.getMessage(), e);
         }
     }
     
     /**
      * 使用AES-256算法解密数据
-     * @param data 加密数据
+     * @param data 加密数据（包含IV）
      * @param password 密码
      * @return 解密后的数据
      */
@@ -1224,16 +1240,30 @@ public class BackupPackage {
             java.security.MessageDigest digest = java.security.MessageDigest.getInstance("SHA-256");
             byte[] key = digest.digest(password.getBytes(StandardCharsets.UTF_8));
             
+            // 分离IV和加密数据（前16字节是IV）
+            if (data.length < 16) {
+                throw new IllegalArgumentException("加密数据太短，无法提取IV");
+            }
+            
+            byte[] iv = new byte[16];
+            byte[] encryptedData = new byte[data.length - 16];
+            System.arraycopy(data, 0, iv, 0, 16);
+            System.arraycopy(data, 16, encryptedData, 0, encryptedData.length);
+            
             // 创建AES密钥和密码器
             javax.crypto.spec.SecretKeySpec secretKey = new javax.crypto.spec.SecretKeySpec(key, "AES");
-            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/ECB/PKCS5Padding");
-            cipher.init(javax.crypto.Cipher.DECRYPT_MODE, secretKey);
+            javax.crypto.spec.IvParameterSpec ivSpec = new javax.crypto.spec.IvParameterSpec(iv);
+            javax.crypto.Cipher cipher = javax.crypto.Cipher.getInstance("AES/CBC/PKCS5Padding");
+            cipher.init(javax.crypto.Cipher.DECRYPT_MODE, secretKey, ivSpec);
             
             // 解密数据
-            return cipher.doFinal(data);
+            return cipher.doFinal(encryptedData);
+        } catch (javax.crypto.BadPaddingException e) {
+            // BadPaddingException通常表示密码错误
+            throw new RuntimeException("密码错误或数据损坏: " + e.getMessage(), e);
         } catch (Exception e) {
-            // 如果AES解密失败（如密码错误），返回原始数据
-            return data;
+            // 其他解密失败
+            throw new RuntimeException("AES解密失败: " + e.getMessage(), e);
         }
     }
     
@@ -1274,15 +1304,19 @@ public class BackupPackage {
             return data;
         }
         
-        switch (method) {
-            case XOR:
-                return decryptXOR(data, password);
-            case RC4:
-                return decryptRC4(data, password);
-            case AES256:
-                return decryptAES256(data, password);
-            default:
-                return data;
+        try {
+            switch (method) {
+                case XOR:
+                    return decryptXOR(data, password);
+                case RC4:
+                    return decryptRC4(data, password);
+                case AES256:
+                    return decryptAES256(data, password);
+                default:
+                    return data;
+            }
+        } catch (Exception e) {
+            throw new IOException("解密失败: " + e.getMessage(), e);
         }
     }
     
@@ -1299,7 +1333,25 @@ public class BackupPackage {
         }
         
         try {
-            // 尝试解密一小部分数据来验证密码
+            // 对于AES256，需要特殊处理，因为数据包含IV
+            if (method == EncryptionMethod.AES256) {
+                // AES256数据至少需要16字节（IV）才能验证
+                if (data.length < 32) { // 至少IV + 一个加密块
+                    return false;
+                }
+                
+                try {
+                    // 尝试解密数据，如果密码错误会抛出异常
+                    byte[] decrypted = decryptAES256(data, password);
+                    // 如果解密成功且数据不为空，则认为密码正确
+                    return decrypted != null && decrypted.length > 0;
+                } catch (Exception e) {
+                    // 解密失败，密码错误
+                    return false;
+                }
+            }
+            
+            // 对于其他加密方法，使用原来的验证逻辑
             byte[] testData = new byte[Math.min(16, data.length)];
             System.arraycopy(data, 0, testData, 0, testData.length);
             
@@ -1314,10 +1366,6 @@ public class BackupPackage {
                 case RC4:
                     decrypted = decryptRC4(testData, password);
                     reEncrypted = encryptRC4(decrypted, password);
-                    break;
-                case AES256:
-                    decrypted = decryptAES256(testData, password);
-                    reEncrypted = encryptAES256(decrypted, password);
                     break;
                 case NONE:
                     // 对于未加密的数据，验证总是成功（如果密码为空则返回true）
@@ -1770,12 +1818,10 @@ public class BackupPackage {
                         }
                         
                         try {
-                            // 对于AES加密，可能需要特殊处理，先尝试解密
+                            // 尝试解密数据
                             fileData = decryptData(fileData, password, record.getEncryptionMethod());
-                            
-                            // 检查解密是否成功 - AES解密失败时可能不会抛出异常但会产生乱码
-                            // 这里我们继续进行哈希比较，如果哈希不匹配则说明解密失败
                         } catch (Exception e) {
+                            // 解密失败，密码错误或数据损坏
                             throw new IOException("密码错误或解密失败: 无法验证文件 " + record.getRelativePath() + " - " + e.getMessage());
                         }
                     }
