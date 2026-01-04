@@ -101,14 +101,18 @@ public class BackupService {
     // 检测文件类型
     private FileKind detectFileKind(Path path) throws IOException {
         try {
+            // 首先检查是否为符号链接（不跟随链接）
+            if (Files.isSymbolicLink(path)) {
+                return FileKind.SYMLINK;
+            }
+            
+            // 如果不是符号链接，再获取其他属性
             BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class);
             
             if (attrs.isRegularFile()) {
                 return FileKind.REGULAR;
             } else if (attrs.isDirectory()) {
                 return FileKind.DIRECTORY;
-            } else if (attrs.isSymbolicLink()) {
-                return FileKind.SYMLINK;
             } else if (attrs.isOther()) {
                 // 需要进一步检测具体类型
                 try {
@@ -118,15 +122,6 @@ public class BackupService {
                     }
                 } catch (Exception e) {
                     // 非POSIX系统，尝试其他方法
-                }
-                
-                // 检查是否为特殊文件
-                try {
-                    if (Files.isSymbolicLink(path)) {
-                        return FileKind.SYMLINK;
-                    }
-                } catch (Exception e) {
-                    // 忽略
                 }
                 
                 // 在Unix系统上检查设备文件
@@ -153,28 +148,34 @@ public class BackupService {
     
     // 获取特殊文件信息
     private SpecialFileRecord getSpecialFileInfo(Path path, FileKind kind) throws IOException {
-        BasicFileAttributes attrs = Files.readAttributes(path, BasicFileAttributes.class);
+        BasicFileAttributes attrs;
         String symlinkTarget = null;
         long deviceNumber = 0;
         
         if (kind == FileKind.SYMLINK) {
+            // 对于符号链接，获取链接本身的属性（不跟随）
+            attrs = Files.readAttributes(path, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
             try {
                 symlinkTarget = Files.readSymbolicLink(path).toString();
             } catch (Exception e) {
                 // 读取符号链接失败
             }
-        } else if (kind == FileKind.BLOCK || kind == FileKind.CHARACTER) {
-            // 在Unix系统上获取设备号
-            if (System.getProperty("os.name").toLowerCase().contains("nix") ||
-                System.getProperty("os.name").toLowerCase().contains("nux") ||
-                System.getProperty("os.name").toLowerCase().contains("mac")) {
-                try {
-                    if (attrs instanceof PosixFileAttributes) {
-                        PosixFileAttributes posixAttrs = (PosixFileAttributes) attrs;
-                        // 这里简化处理，实际需要获取设备号
+        } else {
+            attrs = Files.readAttributes(path, BasicFileAttributes.class);
+            
+            if (kind == FileKind.BLOCK || kind == FileKind.CHARACTER) {
+                // 在Unix系统上获取设备号
+                if (System.getProperty("os.name").toLowerCase().contains("nix") ||
+                    System.getProperty("os.name").toLowerCase().contains("nux") ||
+                    System.getProperty("os.name").toLowerCase().contains("mac")) {
+                    try {
+                        if (attrs instanceof PosixFileAttributes) {
+                            PosixFileAttributes posixAttrs = (PosixFileAttributes) attrs;
+                            // 这里简化处理，实际需要获取设备号
+                        }
+                    } catch (Exception e) {
+                        // 忽略
                     }
-                } catch (Exception e) {
-                    // 忽略
                 }
             }
         }
